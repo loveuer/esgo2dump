@@ -1,0 +1,8 @@
+.idea
+.vscode
+.DS_Store
+data.json
+mapping.json
+setting.json
+output.json
+*.txt

@@ -1,0 +1,48 @@
+name: Auto Build
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-job:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      repository-projects: write
+    steps:
+      - name: install golang
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.20'
+
+      - name: build linux amd64
+        run: CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_linux_amd64 .
+
+      - name: build linux arm64
+        run: CGO_ENABLE=0 GOOS=linux GOARCH=arm64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_linux_arm64 .
+
+      - name: build windows amd64
+        run: CGO_ENABLE=0 GOOS=windows GOARCH=amd64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe .
+
+      - name: build darwin amd64
+        run: CGO_ENABLE=0 GOOS=darwin GOARCH=amd64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_darwin_amd64 .
+
+      - name: build darwin arm64
+        run: CGO_ENABLE=0 GOOS=darwin GOARCH=arm64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_darwin_arm64 .
+
+      - name: create releases
+        id: create_release
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          title: "Release_${{ github.ref_name }}"
+          files: |
+            dist/esgo2dump_${{ github.ref_name }}_linux_amd64
+            dist/esgo2dump_${{ github.ref_name }}_linux_arm64
+            dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe
+            dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
+            dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
+            dist/esgo2dump_${{ github.ref_name }}_darwin_arm64
