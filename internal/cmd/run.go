@@ -28,6 +28,10 @@ func run(cmd *cobra.Command, args []string) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
+	if f_limit == 0 || f_limit > 10000 {
+		return fmt.Errorf("invalid limit(1 - 10000)")
+	}
+
 	switch f_type {
 	case "data", "mapping", "setting":
 	default:
@@ -86,6 +90,7 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		err     error
 		lines   []*interfaces.ESSource
 		succeed int
+		total   int
 	)
 
 	for {
@@ -110,7 +115,9 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 			return fmt.Errorf("cmd.run: got lines=%d, only succeed=%d", len(lines), succeed)
 		}
 
-		logrus.Infof("Dump: %d docs succeed!!!", succeed)
+		total += succeed
+
+		logrus.Infof("Dump: succeed=%d total=%d docs succeed!!!", succeed, total)
 	}
 }
 

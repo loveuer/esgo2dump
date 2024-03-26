@@ -111,6 +111,7 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 		err     error
 		indexer esutil.BulkIndexer
 		count   int
+		be      error
 	)
 	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
 		Client:  c.c,
@@ -134,6 +135,9 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 			Index:      c.index,
 			DocumentID: doc.DocId,
 			Body:       bytes.NewReader(bs),
+			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
+				be = bulkErr
+			},
 		}); err != nil {
 			return 0, err
 		}
@@ -144,9 +148,13 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 		return 0, err
 	}
 
+	if be != nil {
+		return 0, be
+	}
+
 	stats := indexer.Stats()
 	if stats.NumFailed > 0 {
-		return count, fmt.Errorf("write to xes failed=%d", stats.NumFailed)
+		return count, fmt.Errorf("write to xes failed_count=%d bulk_count=%d", stats.NumFailed, count)
 	}
 
 	return count, nil
