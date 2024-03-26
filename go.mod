@@ -1,4 +1,4 @@
-module esgo2dump
+module github.com/loveuer/esgo2dump
 
 go 1.18
 

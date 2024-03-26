@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"esgo2dump/internal/interfaces"
-	"esgo2dump/internal/opt"
-	"esgo2dump/internal/xes"
-	"esgo2dump/internal/xfile"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"io"
 	"net/url"
 	"os"
+
+	"github.com/loveuer/esgo2dump/internal/interfaces"
+	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/internal/xes"
+	"github.com/loveuer/esgo2dump/internal/xfile"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 func run(cmd *cobra.Command, args []string) error {

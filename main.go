@@ -2,9 +2,10 @@ package main
 
 import (
 	"context"
-	"esgo2dump/internal/cmd"
 	"os/signal"
 	"syscall"
+
+	"github.com/loveuer/esgo2dump/internal/cmd"
 
 	"github.com/sirupsen/logrus"
 )
