@@ -6,3 +6,4 @@ mapping.json
 setting.json
 output.json
 *.txt
+dist
