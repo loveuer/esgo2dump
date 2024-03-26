@@ -2,7 +2,8 @@ package cmd
 
 import (
 	"context"
-	"esgo2dump/internal/opt"
+
+	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/spf13/cobra"
 )
 

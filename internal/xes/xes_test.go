@@ -1,9 +1,10 @@
 package xes
 
 import (
-	"esgo2dump/internal/util"
-	elastic "github.com/elastic/go-elasticsearch/v7"
 	"testing"
+
+	elastic "github.com/elastic/go-elasticsearch/v7"
+	"github.com/loveuer/esgo2dump/internal/util"
 )
 
 func TestGetESMapping(t *testing.T) {
