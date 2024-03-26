@@ -13,6 +13,7 @@ import (
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"github.com/sirupsen/logrus"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
@@ -55,6 +56,7 @@ func NewClient(url *url.URL, iot interfaces.IO, qm map[string]any) (interfaces.D
 			RetryBackoff:  nil,
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				DialContext:     (&net.Dialer{Timeout: 5 * time.Second}).DialContext,
 			},
 		},
 	); err != nil {

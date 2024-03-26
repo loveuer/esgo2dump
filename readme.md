@@ -15,24 +15,28 @@
 
 - download pre-build release:
 
-  [release](https://github.com/loveuer/esgo2dump/releases)
+  [releases](https://github.com/loveuer/esgo2dump/releases)
 
 ### usage
 
 `esgo2dump -h`
 
+```bash
+esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json
+
+esgo2dump --input=http://127.0.0.1:9200/some_index --output=http://192.168.1.1:9200/some_index --limit=5000
+
+esgo2dump --input=https://username:password@127.0.0.1:9200/some_index --output=./data.json
+
+esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query='{"match": {"name": "some_name"}}'`,
+```
+
 ### roadmap
 
-[*] data dump
-
-[*] mapping dump
-
-[*] es to file
-
-[*] es to es
-
-[*] auto create index with mapping
-
-[ ] auto create index with mapping,setting
-
-[ ] support es8
+- [x] data dump
+- [x] mapping dump
+- [x] es to file
+- [x] es to es
+- [x] auto create index with mapping
+- [ ] auto create index with mapping,setting
+- [ ] support es8
