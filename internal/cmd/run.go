@@ -28,6 +28,10 @@ func run(cmd *cobra.Command, args []string) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
+	if f_limit == 0 || f_limit > 10000 {
+		return fmt.Errorf("invalid limit(1 - 10000)")
+	}
+
 	switch f_type {
 	case "data", "mapping", "setting":
 	default:
