@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"esgo2dump/internal/interfaces"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
+
+	"github.com/loveuer/esgo2dump/internal/interfaces"
+	"github.com/sirupsen/logrus"
 )
 
 type client struct {

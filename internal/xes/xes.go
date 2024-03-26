@@ -5,19 +5,20 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"esgo2dump/internal/interfaces"
-	"esgo2dump/internal/opt"
-	"esgo2dump/internal/util"
 	"fmt"
-	elastic "github.com/elastic/go-elasticsearch/v7"
-	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/elastic/go-elasticsearch/v7/esutil"
-	"github.com/sirupsen/logrus"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	elastic "github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/elastic/go-elasticsearch/v7/esutil"
+	"github.com/loveuer/esgo2dump/internal/interfaces"
+	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/internal/util"
+	"github.com/sirupsen/logrus"
 )
 
 func NewClient(url *url.URL, iot interfaces.IO, qm map[string]any) (interfaces.DumpIO, error) {

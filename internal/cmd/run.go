@@ -4,16 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"esgo2dump/internal/interfaces"
-	"esgo2dump/internal/opt"
-	"esgo2dump/internal/xes"
-	"esgo2dump/internal/xfile"
 	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/spf13/cobra"
 	"io"
 	"net/url"
 	"os"
+
+	"github.com/loveuer/esgo2dump/internal/interfaces"
+	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/internal/xes"
+	"github.com/loveuer/esgo2dump/internal/xfile"
+	"github.com/sirupsen/logrus"
+	"github.com/spf13/cobra"
 )
 
 func run(cmd *cobra.Command, args []string) error {
@@ -55,14 +56,26 @@ func run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		return ioo.WriteMapping(cmd.Context(), mapping)
+		if err = ioo.WriteMapping(cmd.Context(), mapping); err != nil {
+			return err
+		}
+
+		logrus.Info("Dump: write mapping succeed!!!")
+
+		return nil
 	case "setting":
 		var setting map[string]any
 		if setting, err = ioi.ReadSetting(cmd.Context()); err != nil {
 			return err
 		}
 
-		return ioo.WriteSetting(cmd.Context(), setting)
+		if err = ioo.WriteSetting(cmd.Context(), setting); err != nil {
+			return err
+		}
+
+		logrus.Info("Dump: write setting succeed!!!")
+
+		return nil
 	default:
 		return fmt.Errorf("unknown type=%s", f_type)
 	}
@@ -98,7 +111,6 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		}
 
 		logrus.Infof("Dump: %d docs succeed!!!", succeed)
-
 	}
 }
 
