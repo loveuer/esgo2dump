@@ -13,13 +13,13 @@ jobs:
       pull-requests: write
       repository-projects: write
     steps:
+      - name: checkout repository
+        uses: actions/checkout@v4
+
       - name: install golang
         uses: actions/setup-go@v4
         with:
-          go-version: '1.20'
-
-      - name: donwload dependency
-        run: go mod tidy
+          go-version: '1.18'
 
       - name: build linux amd64
         run: CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_linux_amd64 .
