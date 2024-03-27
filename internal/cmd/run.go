@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -15,6 +16,29 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func check(cmd *cobra.Command) error {
+	if f_input == "" {
+		return cmd.Help()
+		//return fmt.Errorf("must specify input(example: data.json/http://127.0.0.1:9200/my_index)")
+	}
+
+	if f_limit == 0 || f_limit > 10000 {
+		return fmt.Errorf("invalid limit(1 - 10000)")
+	}
+
+	if f_query != "" && f_query_file != "" {
+		return fmt.Errorf("cannot specify both query and query_file at the same time")
+	}
+
+	switch f_type {
+	case "data", "mapping", "setting":
+	default:
+		return fmt.Errorf("unknown type=%s", f_type)
+	}
+
+	return nil
+}
+
 func run(cmd *cobra.Command, args []string) error {
 	var (
 		err error
@@ -26,14 +50,8 @@ func run(cmd *cobra.Command, args []string) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	if f_limit == 0 || f_limit > 10000 {
-		return fmt.Errorf("invalid limit(1 - 10000)")
-	}
-
-	switch f_type {
-	case "data", "mapping", "setting":
-	default:
-		return fmt.Errorf("unknown type=%s", f_type)
+	if err = check(cmd); err != nil {
+		return err
 	}
 
 	if ioi, err = newIO(f_input, interfaces.IOInput); err != nil {
@@ -49,9 +67,19 @@ func run(cmd *cobra.Command, args []string) error {
 		_ = ioo.Close()
 	}()
 
+	if (f_query_file != "" || f_query != "") && ioi.IsFile() {
+		return fmt.Errorf("with file input, query or query_file can't be supported")
+	}
+
 	switch f_type {
 	case "data":
-		return executeData(cmd.Context(), ioi, ioo)
+		if err = executeData(cmd.Context(), ioi, ioo); err != nil {
+			return err
+		}
+
+		logrus.Info("Dump: write data succeed!!!")
+
+		return nil
 	case "mapping":
 		var mapping map[string]any
 		if mapping, err = ioi.ReadMapping(cmd.Context()); err != nil {
@@ -85,12 +113,58 @@ func run(cmd *cobra.Command, args []string) error {
 
 func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 	var (
-		err   error
-		ch    = make(chan []*interfaces.ESSource, 1)
-		errCh = make(chan error)
+		err     error
+		ch      = make(chan []*interfaces.ESSource, 1)
+		errCh   = make(chan error)
+		queries = make([]map[string]any, 0)
 	)
 
-	// write goroutine
+	if f_query != "" {
+		query := make(map[string]any)
+		if err = json.Unmarshal([]byte(f_query), &query); err != nil {
+			return fmt.Errorf("invalid query err=%v", err)
+		}
+
+		queries = append(queries, query)
+	}
+
+	if f_query_file != "" {
+		var (
+			qf *os.File
+		)
+
+		if qf, err = os.Open(f_query_file); err != nil {
+			return fmt.Errorf("open query_file err=%v", err)
+		}
+
+		defer func() {
+			_ = qf.Close()
+		}()
+
+		scanner := bufio.NewScanner(qf)
+		lineCount := 1
+		for scanner.Scan() {
+			line := scanner.Text()
+			oq := make(map[string]any)
+			if err = json.Unmarshal([]byte(line), &oq); err != nil {
+				return fmt.Errorf("query file line=%d invalid err=%v", lineCount, err)
+			}
+
+			queries = append(queries, oq)
+
+			if len(queries) > 10000 {
+				return fmt.Errorf("query_file support max lines=%d", 10000)
+			}
+
+			lineCount++
+		}
+
+	}
+
+	if len(queries) == 0 {
+		queries = append(queries, nil)
+	}
+
 	go func(c context.Context) {
 		var (
 			lines []*interfaces.ESSource
@@ -100,19 +174,19 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 			close(ch)
 		}()
 
-		for {
+		for _, query := range queries {
 			select {
 			case <-c.Done():
 				return
 			default:
-				if lines, err = input.ReadData(c, f_limit); err != nil {
+				if lines, err = input.ReadData(c, f_limit, query); err != nil {
 					errCh <- err
 					return
 				}
 
 				if len(lines) == 0 {
-					ch <- lines
-					return
+					input.ResetOffset()
+					continue
 				}
 
 				ch <- lines
@@ -190,7 +264,7 @@ func newIO(source string, ioType interfaces.IO) (interfaces.DumpIO, error) {
 
 	logrus.Debugf("newIO.%s: source as url=%+v", ioType.Code(), *iurl)
 
-	return xes.NewClient(iurl, ioType, qm)
+	return xes.NewClient(iurl, ioType)
 
 ClientByFile:
 	if ioType == interfaces.IOOutput {

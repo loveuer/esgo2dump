@@ -45,6 +45,7 @@ jobs:
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           title: "Release_${{ github.ref_name }}"
+          prerelease: false
           files: |
             dist/esgo2dump_${{ github.ref_name }}_linux_amd64
             dist/esgo2dump_${{ github.ref_name }}_linux_arm64

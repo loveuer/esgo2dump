@@ -85,6 +85,8 @@ func (c *client) IsFile() bool {
 	return true
 }
 
+func (c *client) ResetOffset() {}
+
 func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (int, error) {
 	var (
 		err   error
@@ -109,7 +111,7 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 	return count, nil
 }
 
-func (c *client) ReadData(ctx context.Context, i int) ([]*interfaces.ESSource, error) {
+func (c *client) ReadData(ctx context.Context, i int, _ map[string]any) ([]*interfaces.ESSource, error) {
 	var (
 		err   error
 		count = 0
