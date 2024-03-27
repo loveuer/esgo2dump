@@ -152,8 +152,6 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 			return 0, err
 		}
 
-		logrus.Debugf("xes.Write: doc content=%s", string(bs))
-
 		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
 			Action:     "index",
 			Index:      c.index,

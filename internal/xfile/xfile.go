@@ -4,11 +4,11 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"github.com/loveuer/esgo2dump/internal/opt"
 	"io"
 	"os"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
-	"github.com/sirupsen/logrus"
 )
 
 type client struct {
@@ -121,8 +121,6 @@ func (c *client) ReadData(ctx context.Context, i int, _ map[string]any) ([]*inte
 	for c.scanner.Scan() {
 		line := c.scanner.Text()
 
-		logrus.Debugf("xfile.Read: line=%s", line)
-
 		item := new(interfaces.ESSource)
 		if err = json.Unmarshal([]byte(line), item); err != nil {
 			return list, err
@@ -152,6 +150,8 @@ func NewClient(file *os.File, ioType interfaces.IO) (interfaces.DumpIO, error) {
 
 	if ioType == interfaces.IOInput {
 		c.scanner = bufio.NewScanner(c.f)
+		buf := make([]byte, opt.BuffSize)
+		c.scanner.Buffer(buf, opt.MaxBuffSize)
 	}
 
 	return c, nil

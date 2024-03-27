@@ -1,6 +1,9 @@
 package xes
 
 import (
+	"bufio"
+	"fmt"
+	"os"
 	"testing"
 
 	elastic "github.com/elastic/go-elasticsearch/v7"
@@ -36,4 +39,69 @@ func TestGetESMapping(t *testing.T) {
 	}
 
 	t.Log("get source:", r.String())
+}
+
+func TestScanWithInterrupt(t *testing.T) {
+	filename := "test_scan.txt"
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		t.Error(1, err)
+		return
+	}
+	defer func() {
+		os.Remove(filename)
+	}()
+	f.WriteString(`line 01
+line 02
+line 03
+line 04
+line 05
+line 06
+line 07
+line 08
+line 09
+line 10
+line 11
+line 12
+line 13
+line 14
+line 15`)
+	f.Close()
+
+	of, err := os.Open(filename)
+	if err != nil {
+		t.Error(2, err)
+		return
+	}
+
+	scanner := bufio.NewScanner(of)
+
+	count := 0
+	for scanner.Scan() {
+		text := scanner.Text()
+		fmt.Printf("[line: %2d] = %s\n", count, text)
+		count++
+
+		if count > 5 {
+			break
+		}
+	}
+
+	count = 0
+	for scanner.Scan() {
+		text := scanner.Text()
+		fmt.Printf("[line: %2d] = %s\n", count, text)
+		count++
+
+		if count > 5 {
+			break
+		}
+	}
+
+	count = 0
+	for scanner.Scan() {
+		text := scanner.Text()
+		fmt.Printf("[line: %2d] = %s\n", count, text)
+		count++
+	}
 }
