@@ -174,22 +174,27 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 			close(ch)
 		}()
 
+	Loop:
 		for _, query := range queries {
-			select {
-			case <-c.Done():
-				return
-			default:
-				if lines, err = input.ReadData(c, f_limit, query); err != nil {
-					errCh <- err
+			for {
+				select {
+				case <-c.Done():
 					return
-				}
+				default:
+					if lines, err = input.ReadData(c, f_limit, query); err != nil {
+						errCh <- err
+						return
+					}
 
-				if len(lines) == 0 {
-					input.ResetOffset()
-					continue
-				}
+					logrus.Debugf("executeData: input read_data got lines=%d", len(lines))
 
-				ch <- lines
+					if len(lines) == 0 {
+						input.ResetOffset()
+						continue Loop
+					}
+
+					ch <- lines
+				}
 			}
 		}
 	}(ctx)
@@ -218,6 +223,8 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 			if succeed, err = output.WriteData(ctx, docs); err != nil {
 				return err
 			}
+
+			logrus.Debugf("executeData: output write_data succeed lines=%d", succeed)
 
 			if succeed != len(docs) {
 				return fmt.Errorf("cmd.run: got lines=%d, only succeed=%d", len(docs), succeed)
