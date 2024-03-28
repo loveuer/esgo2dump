@@ -142,6 +142,7 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		}()
 
 		scanner := bufio.NewScanner(qf)
+		scanner.Buffer(make([]byte, 1*1024*1024), 5*1024*1024)
 		lineCount := 1
 		for scanner.Scan() {
 			line := scanner.Text()
@@ -190,6 +191,10 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 
 					if len(lines) == 0 {
 						input.ResetOffset()
+						if query != nil {
+							bs, _ := json.Marshal(query)
+							logrus.Infof("Dump: query_file query=%s read done!!!", string(bs))
+						}
 						continue Loop
 					}
 

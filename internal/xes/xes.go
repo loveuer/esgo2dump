@@ -128,7 +128,26 @@ func (c *client) Close() error {
 }
 
 func (c *client) ResetOffset() {
-	c.scrollId = ""
+	defer func() {
+		c.scrollId = ""
+	}()
+
+	bs, _ := json.Marshal(map[string]string{
+		"scroll_id": c.scrollId,
+	})
+
+	rr, err := c.c.ClearScroll(
+		c.c.ClearScroll.WithContext(util.Timeout(3)),
+		c.c.ClearScroll.WithBody(bytes.NewReader(bs)),
+	)
+	if err != nil {
+		logrus.Warnf("ResetOffset: clear scroll id=%s err=%v", c.scrollId, err)
+		return
+	}
+
+	if rr.StatusCode != 200 {
+		logrus.Warnf("ResetOffset: clear scroll id=%s msg=%s", c.scrollId, rr.String())
+	}
 }
 func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (int, error) {
 	var (
@@ -195,7 +214,7 @@ func (c *client) ReadData(ctx context.Context, i int, query map[string]any) ([]*
 			c.c.Search.WithIndex(c.index),
 			c.c.Search.WithSize(i),
 			c.c.Search.WithFrom(0),
-			c.c.Search.WithScroll(time.Duration(opt.ScrollDurationSeconds) * time.Second),
+			c.c.Search.WithScroll(time.Duration(opt.Timeout*2) * time.Second),
 		}
 
 		if query != nil && len(query) > 0 {
@@ -223,7 +242,7 @@ func (c *client) ReadData(ctx context.Context, i int, query map[string]any) ([]*
 
 	if resp, err = c.c.Scroll(
 		c.c.Scroll.WithScrollID(c.scrollId),
-		c.c.Scroll.WithScroll(time.Duration(opt.ScrollDurationSeconds)*time.Second),
+		c.c.Scroll.WithScroll(time.Duration(opt.Timeout*2)*time.Second),
 	); err != nil {
 		return result.Hits.Hits, nil
 	}
