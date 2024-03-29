@@ -50,6 +50,11 @@ func run(cmd *cobra.Command, args []string) error {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
+	if f_version {
+		logrus.Infof("esgo2dump (Version: %s)", opt.Version)
+		return nil
+	}
+
 	if err = check(cmd); err != nil {
 		return err
 	}

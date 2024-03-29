@@ -16,6 +16,9 @@ jobs:
       - name: checkout repository
         uses: actions/checkout@v4
 
+      - name: fill version
+        run: sed -i -E "s/v[0-9]+.[0-9]+.[0-9]+/${{ github.ref_name }}/g" internal/opt/version.go
+
       - name: install golang
         uses: actions/setup-go@v4
         with:

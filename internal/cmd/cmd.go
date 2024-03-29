@@ -33,10 +33,13 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 	f_query  string
 
 	f_query_file string
+
+	f_version bool
 )
 
 func init() {
 	rootCommand.Flags().BoolVar(&opt.Debug, "debug", false, "")
+	rootCommand.Flags().BoolVarP(&f_version, "version", "v", false, "print esgo2dump version")
 	rootCommand.Flags().IntVar(&opt.Timeout, "timeout", 30, "max timeout seconds per operation with limit")
 
 	rootCommand.Flags().StringVarP(&f_input, "input", "i", "", "*required: input file or es url (example :data.json / http://127.0.0.1:9200/my_index)")
