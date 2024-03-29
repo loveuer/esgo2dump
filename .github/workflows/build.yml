@@ -55,5 +55,4 @@ jobs:
             dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe
             dist/esgo2dump_${{ github.ref_name }}_windows_arm64.exe
             dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
-            dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
             dist/esgo2dump_${{ github.ref_name }}_darwin_arm64
