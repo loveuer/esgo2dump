@@ -201,7 +201,7 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 	return count, nil
 }
 
-func (c *client) ReadData(ctx context.Context, i int, query map[string]any) ([]*interfaces.ESSource, error) {
+func (c *client) ReadData(ctx context.Context, i int, query map[string]any, source []string) ([]*interfaces.ESSource, error) {
 	var (
 		err    error
 		resp   *esapi.Response
@@ -215,6 +215,10 @@ func (c *client) ReadData(ctx context.Context, i int, query map[string]any) ([]*
 			c.c.Search.WithSize(i),
 			c.c.Search.WithFrom(0),
 			c.c.Search.WithScroll(time.Duration(opt.Timeout*2) * time.Second),
+		}
+
+		if len(source) > 0 {
+			qs = append(qs, c.c.Search.WithSourceIncludes(source...))
 		}
 
 		if query != nil && len(query) > 0 {

@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"github.com/loveuer/esgo2dump/internal/opt"
 	"io"
 	"os"
+
+	"github.com/loveuer/esgo2dump/internal/opt"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 )
@@ -111,7 +112,7 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 	return count, nil
 }
 
-func (c *client) ReadData(ctx context.Context, i int, _ map[string]any) ([]*interfaces.ESSource, error) {
+func (c *client) ReadData(ctx context.Context, i int, _ map[string]any, _ []string) ([]*interfaces.ESSource, error) {
 	var (
 		err   error
 		count = 0

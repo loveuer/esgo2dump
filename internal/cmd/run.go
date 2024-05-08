@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/xes"
 	"github.com/loveuer/esgo2dump/internal/xfile"
+	"github.com/samber/lo"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -76,6 +78,10 @@ func run(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("with file input, query or query_file can't be supported")
 	}
 
+	if (f_source != "") && ioi.IsFile() {
+		return fmt.Errorf("with file input, source can't be supported")
+	}
+
 	switch f_type {
 	case "data":
 		if err = executeData(cmd.Context(), ioi, ioo); err != nil {
@@ -122,7 +128,14 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		ch      = make(chan []*interfaces.ESSource, 1)
 		errCh   = make(chan error)
 		queries = make([]map[string]any, 0)
+		sources = make([]string, 0)
 	)
+
+	if f_source != "" {
+		sources = lo.Map(strings.Split(f_source, ";"), func(item string, idx int) string {
+			return strings.TrimSpace(item)
+		})
+	}
 
 	if f_query != "" {
 		query := make(map[string]any)
@@ -187,7 +200,7 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 				case <-c.Done():
 					return
 				default:
-					if lines, err = input.ReadData(c, f_limit, query); err != nil {
+					if lines, err = input.ReadData(c, f_limit, query, sources); err != nil {
 						errCh <- err
 						return
 					}
