@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/url"
 	"os"
@@ -50,6 +51,8 @@ func run(cmd *cobra.Command, args []string) error {
 
 	if opt.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
+		logrus.SetReportCaller(true)
+		logrus.SetFormatter(&logrus.TextFormatter{})
 	}
 
 	if f_version {
@@ -61,11 +64,11 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if ioi, err = newIO(f_input, interfaces.IOInput); err != nil {
+	if ioi, err = newIO(f_input, interfaces.IOInput, es_iversion); err != nil {
 		return err
 	}
 
-	if ioo, err = newIO(f_output, interfaces.IOOutput); err != nil {
+	if ioo, err = newIO(f_output, interfaces.IOOutput, es_oversion); err != nil {
 		return err
 	}
 
@@ -260,7 +263,7 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 	}
 }
 
-func newIO(source string, ioType interfaces.IO) (interfaces.DumpIO, error) {
+func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, error) {
 	var (
 		err  error
 		iurl *url.URL
@@ -292,9 +295,18 @@ func newIO(source string, ioType interfaces.IO) (interfaces.DumpIO, error) {
 		}
 	}
 
-	logrus.Debugf("newIO.%s: source as url=%+v", ioType.Code(), *iurl)
+	logrus.Debugf("newIO.%s: source as url=%+v version=%s", ioType.Code(), *iurl, esv)
 
-	return xes.NewClient(iurl, ioType)
+	switch esv {
+	case "7":
+		return xes.NewClient(iurl, ioType)
+	case "6":
+		return xes.NewClientV6(iurl, ioType)
+	case "8":
+		return nil, errors.New("es version 8 comming soon")
+	default:
+		return nil, fmt.Errorf("unknown es version=%s", esv)
+	}
 
 ClientByFile:
 	if ioType == interfaces.IOOutput {

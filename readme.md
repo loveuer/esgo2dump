@@ -26,13 +26,17 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=http://192.168.1.1:9200/some_index --limit=5000
 
+esgo2dump --input=http://127.0.0.1:9200/some_index --i-version 6 --output=./data.json
+
+esgo2dump --output=http://127.0.0.1:9200/some_index --o-version 6 --input=./data.json
+
 esgo2dump --input=https://username:password@127.0.0.1:9200/some_index --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --source='id;name;age;address;phones' --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query='{"match": {"name": "some_name"}}'
 
-esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_file=my_queries.json
+esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_file=my_queries.json`,
 ```
 
 - example_queries.json
@@ -51,4 +55,4 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 - [x] auto create index with mapping
 - [ ] auto create index with mapping,setting
 - [ ] support es8
-- [ ] support es6
+- [x] support es6

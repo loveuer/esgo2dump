@@ -1,9 +1,10 @@
 .idea
 .vscode
 .DS_Store
-data.json
-mapping.json
-setting.json
-output.json
+*data.json
+*mapping.json
+*setting.json
+*output.json
+*test.json
 *.txt
 dist

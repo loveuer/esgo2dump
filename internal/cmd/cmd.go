@@ -19,6 +19,10 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=http://192.168.1.1:9200/some_index --limit=5000
 
+esgo2dump --input=http://127.0.0.1:9200/some_index --i-version 6 --output=./data.json
+
+esgo2dump --output=http://127.0.0.1:9200/some_index --o-version 6 --input=./data.json
+
 esgo2dump --input=https://username:password@127.0.0.1:9200/some_index --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --source='id;name;age;address' --output=./data.json
@@ -38,6 +42,8 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 	f_query_file string
 
 	f_version bool
+
+	es_iversion, es_oversion string
 )
 
 func init() {
@@ -47,6 +53,8 @@ func init() {
 
 	rootCommand.Flags().StringVarP(&f_input, "input", "i", "", "*required: input file or es url (example :data.json / http://127.0.0.1:9200/my_index)")
 	rootCommand.Flags().StringVarP(&f_output, "output", "o", "output.json", "")
+	rootCommand.Flags().StringVar(&es_iversion, "i-version", "7", "input(es) version")
+	rootCommand.Flags().StringVar(&es_oversion, "o-version", "7", "output(es) version")
 	rootCommand.Flags().StringVarP(&f_type, "type", "t", "data", "data/mapping/setting")
 	rootCommand.Flags().StringVarP(&f_source, "source", "s", "", "query source, use ';' to separate")
 	rootCommand.Flags().StringVarP(&f_query, "query", "q", "", `query dsl, example: {"bool":{"must":[{"term":{"name":{"value":"some_name"}}}],"must_not":[{"range":{"age":{"gte":18,"lt":60}}}]}}`)

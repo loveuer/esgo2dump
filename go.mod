@@ -3,6 +3,7 @@ module github.com/loveuer/esgo2dump
 go 1.18
 
 require (
+	github.com/elastic/go-elasticsearch/v6 v6.8.10
 	github.com/elastic/go-elasticsearch/v7 v7.17.10
 	github.com/samber/lo v1.39.0
 	github.com/sirupsen/logrus v1.9.3
