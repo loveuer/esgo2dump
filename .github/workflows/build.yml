@@ -42,6 +42,17 @@ jobs:
       - name: build darwin arm64
         run: CGO_ENABLE=0 GOOS=darwin GOARCH=arm64 go build -ldflags='-s -w' -o dist/esgo2dump_${{ github.ref_name }}_darwin_arm64 .
 
+
+      - name: run upx
+        uses: crazy-max/ghaction-upx@v3
+        with:
+          version: latest
+          args: --best --ultra-brute
+          files: |
+            dist/esgo2dump_${{ github.ref_name }}_linux_amd64
+            dist/esgo2dump_${{ github.ref_name }}_linux_arm64
+            dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe
+
       - name: create releases
         id: create_releases
         uses: "marvinpinto/action-automatic-releases@latest"

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/loveuer/esgo2dump/internal/log"
 	"net/url"
 	"os"
 	"strings"
@@ -52,12 +53,12 @@ func run(cmd *cobra.Command, args []string) error {
 	if opt.Debug {
 		logrus.SetLevel(logrus.DebugLevel)
 		logrus.SetReportCaller(true)
-		logrus.SetFormatter(&logrus.TextFormatter{})
+		logrus.SetFormatter(&logrus.JSONFormatter{})
 	}
 
 	if f_version {
-		logrus.Infof("esgo2dump (Version: %s)", opt.Version)
-		return nil
+		fmt.Printf("esgo2dump (Version: %s)\n", opt.Version)
+		os.Exit(0)
 	}
 
 	if err = check(cmd); err != nil {
@@ -91,7 +92,7 @@ func run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		logrus.Info("Dump: write data succeed!!!")
+		log.Info("Dump: write data succeed!!!")
 
 		return nil
 	case "mapping":
@@ -104,7 +105,7 @@ func run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		logrus.Info("Dump: write mapping succeed!!!")
+		log.Info("Dump: write mapping succeed!!!")
 
 		return nil
 	case "setting":
@@ -117,7 +118,7 @@ func run(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		logrus.Info("Dump: write setting succeed!!!")
+		log.Info("Dump: write setting succeed!!!")
 
 		return nil
 	default:
@@ -208,13 +209,16 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 						return
 					}
 
-					logrus.Debugf("executeData: input read_data got lines=%d", len(lines))
+					logrus.
+						WithField("action", "input read data got lines").
+						WithField("lines", len(lines)).
+						Debug()
 
 					if len(lines) == 0 {
 						input.ResetOffset()
 						if query != nil {
 							bs, _ := json.Marshal(query)
-							logrus.Infof("Dump: query_file query=%s read done!!!", string(bs))
+							log.Info("Dump: query_file query=%s read done!!!", string(bs))
 						}
 						continue Loop
 					}
@@ -250,15 +254,18 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 				return err
 			}
 
-			logrus.Debugf("executeData: output write_data succeed lines=%d", succeed)
+			logrus.
+				WithField("action", "output wrote data lines").
+				WithField("lines", succeed).
+				Debug()
 
 			if succeed != len(docs) {
-				return fmt.Errorf("cmd.run: got lines=%d, only succeed=%d", len(docs), succeed)
+				return fmt.Errorf("output got lines=%d, only succeed=%d", len(docs), succeed)
 			}
 
 			total += succeed
 
-			logrus.Infof("Dump: succeed=%d total=%d docs succeed!!!", succeed, total)
+			log.Info("Dump: succeed=%d total=%d docs succeed!!!", succeed, total)
 		}
 	}
 }
@@ -271,31 +278,53 @@ func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, 
 		qm   = make(map[string]any)
 	)
 
-	logrus.Debugf("newIO.%s: source string=%s", ioType.Code(), source)
+	logrus.
+		WithField("action", "new_io").
+		WithField("type", ioType.Code()).
+		WithField("source", source).
+		WithField("es_version", esv).
+		Debug()
 
 	if iurl, err = url.Parse(source); err != nil {
-		logrus.Debugf("newIO.%s: url parse source err=%v", ioType.Code(), err)
+		logrus.
+			WithField("action", "new_io url parse error").
+			WithField("type", ioType.Code()).
+			WithField("source", source).
+			WithField("err", err).
+			Debug()
 		goto ClientByFile
 	}
 
 	if !(iurl.Scheme == "http" || iurl.Scheme == "https") {
-		logrus.Debugf("newIO.%s: url scheme=%s invalid", ioType.Code(), iurl.Scheme)
+		logrus.
+			WithField("action", "new_io url scheme error").
+			WithField("type", ioType.Code()).
+			WithField("source", source).
+			WithField("scheme", iurl.Scheme).
+			Debug()
 		goto ClientByFile
 	}
 
 	if iurl.Host == "" {
-		logrus.Debugf("newIO.%s: url host empty", ioType.Code())
+		logrus.
+			WithField("action", "new_io url host empty").
+			WithField("type", ioType.Code()).
+			WithField("source", source).
+			Debug()
 		goto ClientByFile
 	}
 
 	if ioType == interfaces.IOInput && f_query != "" {
 		if err = json.Unmarshal([]byte(f_query), &qm); err != nil {
-			logrus.Debugf("newIO.%s: query=%s invalid to map[string]any", ioType.Code(), f_query)
+			logrus.
+				WithField("action", "new_io query string invalid").
+				WithField("type", ioType.Code()).
+				WithField("source", source).
+				WithField("query", f_query).
+				Debug()
 			return nil, fmt.Errorf("invalid query err=%v", err)
 		}
 	}
-
-	logrus.Debugf("newIO.%s: source as url=%+v version=%s", ioType.Code(), *iurl, esv)
 
 	switch esv {
 	case "7":
@@ -303,7 +332,7 @@ func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, 
 	case "6":
 		return xes.NewClientV6(iurl, ioType)
 	case "8":
-		return nil, errors.New("es version 8 comming soon")
+		return nil, errors.New("es version 8 coming soon")
 	default:
 		return nil, fmt.Errorf("unknown es version=%s", esv)
 	}

@@ -3,7 +3,7 @@ package interfaces
 import "context"
 
 type DumpIO interface {
-	ReadData(context.Context, int, map[string]any, []string) ([]*ESSource, error)
+	ReadData(ctx context.Context, size int, query map[string]any, includeFields []string) ([]*ESSource, error)
 	WriteData(ctx context.Context, docs []*ESSource) (int, error)
 
 	ResetOffset()

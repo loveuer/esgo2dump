@@ -2,12 +2,11 @@ package main
 
 import (
 	"context"
+	"github.com/loveuer/esgo2dump/internal/log"
 	"os/signal"
 	"syscall"
 
 	"github.com/loveuer/esgo2dump/internal/cmd"
-
-	"github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -16,9 +15,7 @@ func main() {
 	defer cancel()
 
 	if err := cmd.Start(ctx); err != nil {
-		logrus.Error(err)
+		log.Error(err.Error())
 		return
 	}
-
-	logrus.Debug("main: cmd start success!!!")
 }

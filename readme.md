@@ -36,7 +36,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --source='id;name;age;address
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query='{"match": {"name": "some_name"}}'
 
-esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_file=my_queries.json`,
+esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_file=my_queries.json
 ```
 
 - example_queries.json
@@ -54,5 +54,5 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 - [x] es to es
 - [x] auto create index with mapping
 - [ ] auto create index with mapping,setting
-- [ ] support es8
 - [x] support es6
+- [ ] support es8
