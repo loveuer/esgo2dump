@@ -3,7 +3,7 @@
 
 ---
 
-- 当前仅支持 elasticsearch 7
+- 支持 elasticsearch 7, elasticsearch 6
 
 ---
 
