@@ -53,6 +53,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 - [x] es to file
 - [x] es to es
 - [x] auto create index with mapping
+- [ ] args: split_size (auto split json output file)
 - [ ] auto create index with mapping,setting
 - [x] support es6
 - [ ] support es8
