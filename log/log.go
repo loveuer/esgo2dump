@@ -15,8 +15,15 @@ var (
 
 	locker = &sync.Mutex{}
 
-	timeFormat = "06/01/02T15:04:05"
+	timeFormat = "06-01-02T15:04:05"
 )
+
+func SetTimeFormat(format string) {
+	locker.Lock()
+	defer locker.Unlock()
+
+	timeFormat = format
+}
 
 func Info(msg string, data ...any) {
 	buf := &bytes.Buffer{}

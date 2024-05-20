@@ -6,8 +6,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/loveuer/esgo2dump/internal/log"
-	"io"
+	"github.com/loveuer/esgo2dump/model"
+	"github.com/loveuer/esgo2dump/xes/es6"
 	"net"
 	"net/http"
 	"net/url"
@@ -112,17 +112,16 @@ func NewClientV6(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
 	case <-util.Timeout(10).Done():
 		return nil, fmt.Errorf("dial es=%s err=%v", address, context.DeadlineExceeded)
 	case c := <-cliCh:
-		return &clientv6{c: c, index: urlIndex, iot: iot}, nil
+		return &clientv6{client: c, index: urlIndex, iot: iot}, nil
 	case e := <-errCh:
 		return nil, e
 	}
 }
 
 type clientv6 struct {
-	c        *elastic.Client
-	iot      interfaces.IO
-	index    string
-	scrollId string
+	client *elastic.Client
+	iot    interfaces.IO
+	index  string
 }
 
 func (c *clientv6) checkResponse(r *esapi.Response) error {
@@ -145,29 +144,7 @@ func (c *clientv6) Close() error {
 	return nil
 }
 
-func (c *clientv6) ResetOffset() {
-	defer func() {
-		c.scrollId = ""
-	}()
-
-	bs, _ := json.Marshal(map[string]string{
-		"scroll_id": c.scrollId,
-	})
-
-	rr, err := c.c.ClearScroll(
-		c.c.ClearScroll.WithContext(util.Timeout(3)),
-		c.c.ClearScroll.WithBody(bytes.NewReader(bs)),
-	)
-	if err != nil {
-		log.Warn("ResetOffset: clear scroll id=%s err=%v", c.scrollId, err)
-		return
-	}
-
-	if rr.StatusCode != 200 {
-		log.Warn("ResetOffset: clear scroll id=%s msg=%s", c.scrollId, rr.String())
-	}
-}
-func (c *clientv6) WriteData(ctx context.Context, docs []*interfaces.ESSource) (int, error) {
+func (c *clientv6) WriteData(ctx context.Context, docs []*model.ESSource) (int, error) {
 	var (
 		err     error
 		indexer esutil.BulkIndexer
@@ -175,7 +152,7 @@ func (c *clientv6) WriteData(ctx context.Context, docs []*interfaces.ESSource) (
 		be      error
 	)
 	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
-		Client:       c.c,
+		Client:       c.client,
 		Index:        c.index,
 		DocumentType: "_doc",
 		ErrorTrace:   true,
@@ -222,76 +199,15 @@ func (c *clientv6) WriteData(ctx context.Context, docs []*interfaces.ESSource) (
 	return count, nil
 }
 
-func (c *clientv6) ReadData(ctx context.Context, i int, query map[string]any, source []string) ([]*interfaces.ESSource, error) {
-	var (
-		err    error
-		resp   *esapi.Response
-		result = new(interfaces.ESResponseV6)
-		bs     []byte
-	)
+func (c *clientv6) ReadData(ctx context.Context, size int, query map[string]any, source []string) (<-chan []*model.ESSource, <-chan error) {
+	dch, ech := es6.ReadData(ctx, c.client, c.index, size, 0, query, source)
 
-	if c.scrollId == "" {
-		qs := []func(*esapi.SearchRequest){
-			c.c.Search.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
-			c.c.Search.WithIndex(c.index),
-			c.c.Search.WithSize(i),
-			c.c.Search.WithFrom(0),
-			c.c.Search.WithScroll(time.Duration(opt.Timeout*2) * time.Second),
-		}
-
-		if len(source) > 0 {
-			qs = append(qs, c.c.Search.WithSourceIncludes(source...))
-		}
-
-		if query != nil && len(query) > 0 {
-			queryBs, _ := json.Marshal(map[string]any{"query": query})
-			qs = append(qs, c.c.Search.WithBody(bytes.NewReader(queryBs)))
-		}
-
-		if resp, err = c.c.Search(qs...); err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != 200 {
-			return nil, fmt.Errorf(resp.String())
-		}
-
-		if bs, err = io.ReadAll(resp.Body); err != nil {
-			return nil, err
-		}
-
-		if err = json.Unmarshal(bs, result); err != nil {
-			logrus.
-				WithField("err", err.Error()).
-				WithField("raw", string(bs)).
-				Debug()
-			return nil, err
-		}
-
-		c.scrollId = result.ScrollId
-
-		return result.Hits.Hits, nil
-	}
-
-	if resp, err = c.c.Scroll(
-		c.c.Scroll.WithScrollID(c.scrollId),
-		c.c.Scroll.WithScroll(time.Duration(opt.Timeout*2)*time.Second),
-	); err != nil {
-		return result.Hits.Hits, nil
-	}
-
-	decoder := json.NewDecoder(resp.Body)
-	if err = decoder.Decode(result); err != nil {
-		return nil, err
-	}
-
-	return result.Hits.Hits, nil
+	return dch, ech
 }
 
 func (c *clientv6) ReadMapping(ctx context.Context) (map[string]any, error) {
-	r, err := c.c.Indices.GetMapping(
-		c.c.Indices.GetMapping.WithIndex(c.index),
+	r, err := c.client.Indices.GetMapping(
+		c.client.Indices.GetMapping.WithIndex(c.index),
 	)
 	if err != nil {
 		return nil, err
@@ -321,10 +237,10 @@ func (c *clientv6) WriteMapping(ctx context.Context, m map[string]any) error {
 			return err
 		}
 
-		if result, err = c.c.Indices.Create(
+		if result, err = c.client.Indices.Create(
 			c.index,
-			c.c.Indices.Create.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
-			c.c.Indices.Create.WithBody(bytes.NewReader(bs)),
+			c.client.Indices.Create.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+			c.client.Indices.Create.WithBody(bytes.NewReader(bs)),
 		); err != nil {
 			return err
 		}
@@ -338,9 +254,9 @@ func (c *clientv6) WriteMapping(ctx context.Context, m map[string]any) error {
 }
 
 func (c *clientv6) ReadSetting(ctx context.Context) (map[string]any, error) {
-	r, err := c.c.Indices.GetSettings(
-		c.c.Indices.GetSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
-		c.c.Indices.GetSettings.WithIndex(c.index),
+	r, err := c.client.Indices.GetSettings(
+		c.client.Indices.GetSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+		c.client.Indices.GetSettings.WithIndex(c.index),
 	)
 	if err != nil {
 		return nil, err
@@ -370,9 +286,9 @@ func (c *clientv6) WriteSetting(ctx context.Context, m map[string]any) error {
 		return err
 	}
 
-	if result, err = c.c.Indices.PutSettings(
+	if result, err = c.client.Indices.PutSettings(
 		bytes.NewReader(bs),
-		c.c.Indices.PutSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+		c.client.Indices.PutSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
 	); err != nil {
 		return err
 	}

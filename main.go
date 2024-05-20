@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/loveuer/esgo2dump/internal/log"
+	"github.com/loveuer/esgo2dump/log"
 	"os/signal"
 	"syscall"
 

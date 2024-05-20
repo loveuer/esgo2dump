@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/model"
 	"io"
 	"os"
-
-	"github.com/loveuer/esgo2dump/internal/opt"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 )
@@ -86,9 +86,7 @@ func (c *client) IsFile() bool {
 	return true
 }
 
-func (c *client) ResetOffset() {}
-
-func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (int, error) {
+func (c *client) WriteData(ctx context.Context, docs []*model.ESSource) (int, error) {
 	var (
 		err   error
 		bs    []byte
@@ -112,34 +110,62 @@ func (c *client) WriteData(ctx context.Context, docs []*interfaces.ESSource) (in
 	return count, nil
 }
 
-func (c *client) ReadData(ctx context.Context, i int, _ map[string]any, _ []string) ([]*interfaces.ESSource, error) {
+func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		err   error
 		count = 0
-		list  = make([]*interfaces.ESSource, 0, i)
+		list  = make([]*model.ESSource, 0, size)
+		dch   = make(chan []*model.ESSource)
+		ech   = make(chan error)
+		ready = make(chan bool)
 	)
 
-	for c.scanner.Scan() {
-		line := c.scanner.Text()
+	go func(ctx context.Context) {
+		defer func() {
+			close(dch)
+			close(ech)
+		}()
 
-		item := new(interfaces.ESSource)
-		if err = json.Unmarshal([]byte(line), item); err != nil {
-			return list, err
+		ready <- true
+
+		for c.scanner.Scan() {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				item := new(model.ESSource)
+				line := c.scanner.Bytes()
+
+				if err = json.Unmarshal(line, item); err != nil {
+					ech <- err
+					return
+				}
+
+				list = append(list, item)
+				count++
+
+				if count >= size {
+					dch <- list
+					list = list[:0]
+					count = 0
+				}
+			}
 		}
 
-		list = append(list, item)
-
-		count++
-		if count >= i {
-			break
+		if len(list) > 0 {
+			dch <- list
+			list = list[:0]
+			count = 0
 		}
-	}
 
-	if err = c.scanner.Err(); err != nil {
-		return list, err
-	}
+		if err = c.scanner.Err(); err != nil {
+			ech <- err
+		}
+	}(ctx)
 
-	return list, nil
+	<-ready
+
+	return dch, ech
 }
 
 func (c *client) Close() error {
