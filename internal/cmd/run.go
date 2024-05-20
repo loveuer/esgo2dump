@@ -6,7 +6,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/loveuer/esgo2dump/internal/log"
+	"github.com/loveuer/esgo2dump/log"
+	"github.com/loveuer/esgo2dump/model"
 	"net/url"
 	"os"
 	"strings"
@@ -129,8 +130,6 @@ func run(cmd *cobra.Command, args []string) error {
 func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 	var (
 		err     error
-		ch      = make(chan []*interfaces.ESSource, 1)
-		errCh   = make(chan error)
 		queries = make([]map[string]any, 0)
 		sources = make([]string, 0)
 	)
@@ -188,86 +187,56 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		queries = append(queries, nil)
 	}
 
-	go func(c context.Context) {
-		var (
-			lines []*interfaces.ESSource
-		)
-
-		defer func() {
-			close(ch)
-		}()
-
-	Loop:
-		for _, query := range queries {
-			for {
-				select {
-				case <-c.Done():
-					return
-				default:
-					if lines, err = input.ReadData(c, f_limit, query, sources); err != nil {
-						errCh <- err
-						return
-					}
-
-					logrus.
-						WithField("action", "input read data got lines").
-						WithField("lines", len(lines)).
-						Debug()
-
-					if len(lines) == 0 {
-						input.ResetOffset()
-						if query != nil {
-							bs, _ := json.Marshal(query)
-							log.Info("Dump: query_file query=%s read done!!!", string(bs))
-						}
-						continue Loop
-					}
-
-					ch <- lines
-				}
-			}
-		}
-	}(ctx)
-
 	var (
+		dch <-chan []*model.ESSource
+		ech <-chan error
+
 		succeed int
 		total   int
-		docs    []*interfaces.ESSource
+		docs    []*model.ESSource
 		ok      bool
 	)
 
-	for {
-		select {
-		case <-ctx.Done():
-		case err = <-errCh:
-			return err
-		case docs, ok = <-ch:
-			if !ok {
+Loop:
+	for _, query := range queries {
+		dch, ech = input.ReadData(ctx, f_limit, query, sources)
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case err = <-ech:
 				return err
+			case docs, ok = <-dch:
+				logrus.
+					WithField("action", "run.ExecuteData").
+					WithField("read.docs", len(docs)).
+					WithField("read.ok", ok).
+					Debug()
+
+				if !ok {
+					continue Loop
+				}
+
+				if len(docs) == 0 {
+					continue Loop
+				}
+
+				if succeed, err = output.WriteData(ctx, docs); err != nil {
+					return err
+				}
+
+				if succeed != len(docs) {
+					return fmt.Errorf("output got lines=%d, only succeed=%d", len(docs), succeed)
+				}
+
+				total += succeed
+
+				log.Info("Dump: succeed=%d total=%d docs succeed!!!", succeed, total)
 			}
-
-			if len(docs) == 0 {
-				return nil
-			}
-
-			if succeed, err = output.WriteData(ctx, docs); err != nil {
-				return err
-			}
-
-			logrus.
-				WithField("action", "output wrote data lines").
-				WithField("lines", succeed).
-				Debug()
-
-			if succeed != len(docs) {
-				return fmt.Errorf("output got lines=%d, only succeed=%d", len(docs), succeed)
-			}
-
-			total += succeed
-
-			log.Info("Dump: succeed=%d total=%d docs succeed!!!", succeed, total)
 		}
 	}
+
+	return nil
 }
 
 func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, error) {
