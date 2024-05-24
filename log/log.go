@@ -48,3 +48,7 @@ func Error(msg string, data ...any) {
 	_, _ = fmt.Fprintf(buf, msg, data...)
 	fmt.Println(buf.String())
 }
+
+type WroteLogger interface {
+	Info(msg string, data ...any)
+}

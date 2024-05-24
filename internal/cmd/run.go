@@ -188,50 +188,50 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 	}
 
 	var (
-		dch <-chan []*model.ESSource
-		ech <-chan error
+		ok   bool
+		docs []*model.ESSource
+		dch  <-chan []*model.ESSource
+		ech  <-chan error
 
-		succeed int
-		total   int
-		docs    []*model.ESSource
-		ok      bool
+		e2ch = make(chan error)
+		wch  = make(chan []*model.ESSource)
 	)
+
+	go func() {
+		defer func() {
+			close(wch)
+			close(e2ch)
+		}()
+
+		if err = output.WriteData(ctx, wch); err != nil {
+			e2ch <- err
+		}
+	}()
+
+	log.Info("Query: got queries=%d", len(queries))
 
 Loop:
 	for _, query := range queries {
 		dch, ech = input.ReadData(ctx, f_limit, query, sources)
+
 		for {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case err = <-ech:
-				return err
-			case docs, ok = <-dch:
-				logrus.
-					WithField("action", "run.ExecuteData").
-					WithField("read.docs", len(docs)).
-					WithField("read.ok", ok).
-					Debug()
-
-				if !ok {
-					continue Loop
-				}
-
-				if len(docs) == 0 {
-					continue Loop
-				}
-
-				if succeed, err = output.WriteData(ctx, docs); err != nil {
+			case err, ok = <-ech:
+				if err != nil {
 					return err
 				}
 
-				if succeed != len(docs) {
-					return fmt.Errorf("output got lines=%d, only succeed=%d", len(docs), succeed)
+				continue Loop
+			case err, _ = <-e2ch:
+				return err
+			case docs, ok = <-dch:
+				if !ok || len(docs) == 0 {
+					continue Loop
 				}
 
-				total += succeed
-
-				log.Info("Dump: succeed=%d total=%d docs succeed!!!", succeed, total)
+				wch <- docs
 			}
 		}
 	}

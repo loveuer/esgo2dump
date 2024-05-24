@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/log"
 	"github.com/loveuer/esgo2dump/model"
 	"io"
 	"os"
@@ -16,6 +17,29 @@ type client struct {
 	f       *os.File
 	iot     interfaces.IO
 	scanner *bufio.Scanner
+}
+
+func (c *client) WriteData(ctx context.Context, docsCh <-chan []*model.ESSource) error {
+	total := 0
+	for line := range docsCh {
+		for _, doc := range line {
+			bs, err := json.Marshal(doc)
+			if err != nil {
+				return err
+			}
+
+			if _, err = c.f.Write(append(bs, '\n')); err != nil {
+				return err
+			}
+		}
+
+		count := len(line)
+		total += count
+
+		log.Info("Dump: succeed=%d total=%d docs succeed!!!", count, total)
+	}
+
+	return nil
 }
 
 func (c *client) ReadMapping(ctx context.Context) (map[string]any, error) {
@@ -84,30 +108,6 @@ func (c *client) IOType() interfaces.IO {
 
 func (c *client) IsFile() bool {
 	return true
-}
-
-func (c *client) WriteData(ctx context.Context, docs []*model.ESSource) (int, error) {
-	var (
-		err   error
-		bs    []byte
-		count = 0
-	)
-
-	for _, doc := range docs {
-		if bs, err = json.Marshal(doc); err != nil {
-			return count, err
-		}
-
-		bs = append(bs, '\n')
-
-		if _, err = c.f.Write(bs); err != nil {
-			return count, err
-		}
-
-		count++
-	}
-
-	return count, nil
 }
 
 func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []string) (<-chan []*model.ESSource, <-chan error) {

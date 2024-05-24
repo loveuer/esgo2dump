@@ -7,13 +7,15 @@ import (
 	"fmt"
 	elastic "github.com/elastic/go-elasticsearch/v6"
 	"github.com/elastic/go-elasticsearch/v6/esutil"
+	"github.com/loveuer/esgo2dump/log"
 	"github.com/loveuer/esgo2dump/model"
 )
 
-func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh <-chan []*model.ESSource) error {
+func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh <-chan []*model.ESSource, logs ...log.WroteLogger) error {
 	var (
 		err     error
 		indexer esutil.BulkIndexer
+		total   = 0
 	)
 
 	for {
@@ -64,6 +66,8 @@ func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh
 				count++
 			}
 
+			total += count
+
 			if err = indexer.Close(ctx); err != nil {
 				return err
 			}
@@ -71,6 +75,10 @@ func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh
 			stats := indexer.Stats()
 			if stats.NumFailed > 0 {
 				return fmt.Errorf("write to es failed_count=%d bulk_count=%d", stats.NumFailed, count)
+			}
+
+			if len(logs) > 0 && logs[0] != nil {
+				logs[0].Info("Dump: succeed=%d total=%d docs succeed!!!", count, total)
 			}
 		}
 	}

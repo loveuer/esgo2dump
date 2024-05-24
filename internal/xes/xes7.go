@@ -7,10 +7,10 @@ import (
 	"fmt"
 	elastic "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/elastic/go-elasticsearch/v7/esutil"
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/util"
+	"github.com/loveuer/esgo2dump/log"
 	"github.com/loveuer/esgo2dump/model"
 	"github.com/loveuer/esgo2dump/xes/es7"
 	"net/url"
@@ -21,6 +21,14 @@ type client struct {
 	client *elastic.Client
 	iot    interfaces.IO
 	index  string
+}
+
+func (c *client) Info(msg string, data ...any) {
+	log.Info(msg, data...)
+}
+
+func (c *client) WriteData(ctx context.Context, docsCh <-chan []*model.ESSource) error {
+	return es7.WriteData(ctx, c.client, c.index, docsCh, c)
 }
 
 func NewClient(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
@@ -62,60 +70,60 @@ func (c *client) Close() error {
 	return nil
 }
 
-func (c *client) WriteData(ctx context.Context, docs []*model.ESSource) (int, error) {
-	var (
-		err     error
-		indexer esutil.BulkIndexer
-		count   int
-		be      error
-	)
-	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
-		Client:     c.client,
-		Index:      c.index,
-		ErrorTrace: true,
-		OnError: func(ctx context.Context, err error) {
-
-		},
-	}); err != nil {
-		return 0, err
-	}
-
-	for _, doc := range docs {
-		var bs []byte
-
-		if bs, err = json.Marshal(doc.Content); err != nil {
-			return 0, err
-		}
-
-		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
-			Action:     "index",
-			Index:      c.index,
-			DocumentID: doc.DocId,
-			Body:       bytes.NewReader(bs),
-			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
-				be = bulkErr
-			},
-		}); err != nil {
-			return 0, err
-		}
-		count++
-	}
-
-	if err = indexer.Close(util.TimeoutCtx(ctx, opt.Timeout)); err != nil {
-		return 0, err
-	}
-
-	if be != nil {
-		return 0, be
-	}
-
-	stats := indexer.Stats()
-	if stats.NumFailed > 0 {
-		return count, fmt.Errorf("write to xes failed_count=%d bulk_count=%d", stats.NumFailed, count)
-	}
-
-	return count, nil
-}
+//func (c *client) WriteData(ctx context.Context, docs []*model.ESSource) (int, error) {
+//	var (
+//		err     error
+//		indexer esutil.BulkIndexer
+//		count   int
+//		be      error
+//	)
+//	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
+//		Client:     c.client,
+//		Index:      c.index,
+//		ErrorTrace: true,
+//		OnError: func(ctx context.Context, err error) {
+//
+//		},
+//	}); err != nil {
+//		return 0, err
+//	}
+//
+//	for _, doc := range docs {
+//		var bs []byte
+//
+//		if bs, err = json.Marshal(doc.Content); err != nil {
+//			return 0, err
+//		}
+//
+//		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
+//			Action:     "index",
+//			Index:      c.index,
+//			DocumentID: doc.DocId,
+//			Body:       bytes.NewReader(bs),
+//			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
+//				be = bulkErr
+//			},
+//		}); err != nil {
+//			return 0, err
+//		}
+//		count++
+//	}
+//
+//	if err = indexer.Close(util.TimeoutCtx(ctx, opt.Timeout)); err != nil {
+//		return 0, err
+//	}
+//
+//	if be != nil {
+//		return 0, be
+//	}
+//
+//	stats := indexer.Stats()
+//	if stats.NumFailed > 0 {
+//		return count, fmt.Errorf("write to xes failed_count=%d bulk_count=%d", stats.NumFailed, count)
+//	}
+//
+//	return count, nil
+//}
 
 func (c *client) ReadData(ctx context.Context, size int, query map[string]any, source []string) (<-chan []*model.ESSource, <-chan error) {
 	dch, ech := es7.ReadData(ctx, c.client, c.index, size, 0, query, source)

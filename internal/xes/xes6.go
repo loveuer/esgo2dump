@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"github.com/loveuer/esgo2dump/log"
 	"github.com/loveuer/esgo2dump/model"
 	"github.com/loveuer/esgo2dump/xes/es6"
 	"net"
@@ -16,7 +17,6 @@ import (
 
 	elastic "github.com/elastic/go-elasticsearch/v6"
 	"github.com/elastic/go-elasticsearch/v6/esapi"
-	"github.com/elastic/go-elasticsearch/v6/esutil"
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/util"
@@ -124,6 +124,14 @@ type clientv6 struct {
 	index  string
 }
 
+func (c *clientv6) Info(msg string, data ...any) {
+	log.Info(msg, data...)
+}
+
+func (c *clientv6) WriteData(ctx context.Context, docsCh <-chan []*model.ESSource) error {
+	return es6.WriteData(ctx, c.client, c.index, docsCh, c)
+}
+
 func (c *clientv6) checkResponse(r *esapi.Response) error {
 	if r.StatusCode == 200 {
 		return nil
@@ -142,61 +150,6 @@ func (c *clientv6) IsFile() bool {
 
 func (c *clientv6) Close() error {
 	return nil
-}
-
-func (c *clientv6) WriteData(ctx context.Context, docs []*model.ESSource) (int, error) {
-	var (
-		err     error
-		indexer esutil.BulkIndexer
-		count   int
-		be      error
-	)
-	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
-		Client:       c.client,
-		Index:        c.index,
-		DocumentType: "_doc",
-		ErrorTrace:   true,
-	}); err != nil {
-		return 0, err
-	}
-
-	for _, doc := range docs {
-		var bs []byte
-
-		if bs, err = json.Marshal(doc.Content); err != nil {
-			return 0, err
-		}
-
-		logrus.WithField("raw", string(bs)).Debug()
-
-		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
-			Action:     "index",
-			Index:      c.index,
-			DocumentID: doc.DocId,
-			Body:       bytes.NewReader(bs),
-			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
-				be = bulkErr
-			},
-		}); err != nil {
-			return 0, err
-		}
-		count++
-	}
-
-	if err = indexer.Close(util.TimeoutCtx(ctx, opt.Timeout)); err != nil {
-		return 0, err
-	}
-
-	if be != nil {
-		return 0, be
-	}
-
-	stats := indexer.Stats()
-	if stats.NumFailed > 0 {
-		return count, fmt.Errorf("write to xes failed_count=%d bulk_count=%d", stats.NumFailed, count)
-	}
-
-	return count, nil
 }
 
 func (c *clientv6) ReadData(ctx context.Context, size int, query map[string]any, source []string) (<-chan []*model.ESSource, <-chan error) {
