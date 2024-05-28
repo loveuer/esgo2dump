@@ -1,52 +1,103 @@
 package log
 
 import (
-	"bytes"
-	"fmt"
 	"github.com/fatih/color"
+	"io"
 	"sync"
 	"time"
 )
+
+type LogLevel uint32
+
+const (
+	LogLevelDebug = iota
+	LogLevelInfo
+	LogLevelWarn
+	LogLevelError
+)
+
+type logger struct {
+	sync.Mutex
+	timeFormat string
+	writer     io.Writer
+	level      LogLevel
+	debug      func(prefix, timestamp, msg string, data ...any)
+	info       func(prefix, timestamp, msg string, data ...any)
+	warn       func(prefix, timestamp, msg string, data ...any)
+	error      func(prefix, timestamp, msg string, data ...any)
+}
 
 var (
 	red    = color.New(color.FgRed)
 	green  = color.New(color.FgGreen)
 	yellow = color.New(color.FgYellow)
-
-	locker = &sync.Mutex{}
-
-	timeFormat = "06-01-02T15:04:05"
+	white  = color.New(color.FgWhite)
 )
 
-func SetTimeFormat(format string) {
-	locker.Lock()
-	defer locker.Unlock()
-
-	timeFormat = format
+func (l *logger) SetTimeFormat(format string) {
+	l.Lock()
+	defer l.Unlock()
+	l.timeFormat = format
 }
 
+func (l *logger) SetLogLevel(level LogLevel) {
+	l.Lock()
+	defer l.Unlock()
+
+	if level > LogLevelDebug {
+		l.debug = nilLogger
+	} else {
+		l.debug = normalLogger
+	}
+
+	if level > LogLevelInfo {
+		l.info = nilLogger
+	} else {
+		l.info = normalLogger
+	}
+
+	if level > LogLevelWarn {
+		l.warn = nilLogger
+	} else {
+		l.warn = normalLogger
+	}
+
+	if level > LogLevelError {
+		l.error = nilLogger
+	} else {
+		l.error = normalLogger
+	}
+}
+
+func (l *logger) Debug(msg string, data ...any) {
+	l.debug(white.Sprint("Debug "), time.Now().Format(l.timeFormat), msg, data...)
+}
+
+func (l *logger) Info(msg string, data ...any) {
+	l.info(green.Sprint("Info  "), time.Now().Format(l.timeFormat), msg, data...)
+}
+
+func (l *logger) Warn(msg string, data ...any) {
+	l.warn(yellow.Sprint("Warn  "), time.Now().Format(l.timeFormat), msg, data...)
+}
+
+func (l *logger) Error(msg string, data ...any) {
+	l.error(red.Sprint("Error "), time.Now().Format(l.timeFormat), msg, data...)
+}
+
+func Debug(msg string, data ...any) {
+	defaultLogger.Debug(msg, data...)
+}
 func Info(msg string, data ...any) {
-	buf := &bytes.Buffer{}
-	_, _ = green.Fprint(buf, "Info  ")
-	_, _ = fmt.Fprintf(buf, "| %s | ", time.Now().Format(timeFormat))
-	_, _ = fmt.Fprintf(buf, msg, data...)
-	fmt.Println(buf.String())
+	defaultLogger.Info(msg, data...)
 }
 
 func Warn(msg string, data ...any) {
-	buf := &bytes.Buffer{}
-	_, _ = yellow.Fprint(buf, "Warn  ")
-	_, _ = fmt.Fprintf(buf, "| %s | ", time.Now().Format(timeFormat))
-	_, _ = fmt.Fprintf(buf, msg, data...)
-	fmt.Println(buf.String())
+	defaultLogger.Warn(msg, data...)
 }
 
 func Error(msg string, data ...any) {
-	buf := &bytes.Buffer{}
-	_, _ = red.Fprint(buf, "Error ")
-	_, _ = fmt.Fprintf(buf, "| %s | ", time.Now().Format(timeFormat))
-	_, _ = fmt.Fprintf(buf, msg, data...)
-	fmt.Println(buf.String())
+	defaultLogger.Error(msg, data...)
 }
 
 type WroteLogger interface {
