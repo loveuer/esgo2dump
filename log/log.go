@@ -85,21 +85,6 @@ func (l *logger) Error(msg string, data ...any) {
 	l.error(red.Sprint("Error "), time.Now().Format(l.timeFormat), msg, data...)
 }
 
-func Debug(msg string, data ...any) {
-	defaultLogger.Debug(msg, data...)
-}
-func Info(msg string, data ...any) {
-	defaultLogger.Info(msg, data...)
-}
-
-func Warn(msg string, data ...any) {
-	defaultLogger.Warn(msg, data...)
-}
-
-func Error(msg string, data ...any) {
-	defaultLogger.Error(msg, data...)
-}
-
 type WroteLogger interface {
 	Info(msg string, data ...any)
 }

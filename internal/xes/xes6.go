@@ -20,7 +20,6 @@ import (
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/util"
-	"github.com/sirupsen/logrus"
 )
 
 func NewClientV6(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
@@ -41,13 +40,7 @@ func NewClientV6(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
 		}
 	}
 
-	logrus.
-		WithField("action", "new es client v6").
-		WithField("endpoint", address).
-		WithField("index", urlIndex).
-		WithField("username", urlUsername).
-		WithField("password", urlPassword).
-		Debug()
+	log.Debug("action=%s, endpoint=%s, index=%s, username=%s, password=%s", "new es client v6", address, urlIndex, urlUsername, urlPassword)
 
 	if urlIndex == "" {
 		return nil, fmt.Errorf("please specify index name: (like => http://127.0.0.1:9200/my_index)")
@@ -75,30 +68,20 @@ func NewClientV6(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
 				},
 			},
 		); err != nil {
-			logrus.
-				WithField("action", "new es client v6 error").
-				WithField("endpoints", endpoints).
-				WithField("err", err).
-				Debug()
+			log.Debug("action=%s, endpoints=%v, err=%s", "new es client v6 error", endpoints, err.Error())
 			errCh <- err
 			return
 		}
 
 		if infoResp, err = cli.Info(); err != nil {
-			logrus.
-				WithField("action", "es client v6 ping error").
-				WithField("err", err).
-				Debug()
+			log.Debug("action=%s, endpoints=%v, err=%s", "new es client v6 info error", endpoints, err.Error())
 			errCh <- err
 			return
 		}
 
 		if infoResp.StatusCode != 200 {
 			err = fmt.Errorf("info xes status=%d", infoResp.StatusCode)
-			logrus.
-				WithField("action", "es client v6 ping status error").
-				WithField("status", infoResp.StatusCode).
-				Debug()
+			log.Debug("action=%s, endpoints=%v, err=%s", "es client v6 ping status error", endpoints, err.Error())
 			errCh <- err
 			return
 		}

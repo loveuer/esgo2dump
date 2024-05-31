@@ -17,7 +17,6 @@ import (
 	"github.com/loveuer/esgo2dump/internal/xes"
 	"github.com/loveuer/esgo2dump/internal/xfile"
 	"github.com/samber/lo"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -52,9 +51,7 @@ func run(cmd *cobra.Command, args []string) error {
 	)
 
 	if opt.Debug {
-		logrus.SetLevel(logrus.DebugLevel)
-		logrus.SetReportCaller(true)
-		logrus.SetFormatter(&logrus.JSONFormatter{})
+		log.SetLogLevel(log.LogLevelDebug)
 	}
 
 	if f_version {
@@ -247,50 +244,26 @@ func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, 
 		qm   = make(map[string]any)
 	)
 
-	logrus.
-		WithField("action", "new_io").
-		WithField("type", ioType.Code()).
-		WithField("source", source).
-		WithField("es_version", esv).
-		Debug()
+	log.Debug("action=%s, type=%s, source=%s, es_version=%s", "new_io", ioType.Code(), source, esv)
 
 	if iurl, err = url.Parse(source); err != nil {
-		logrus.
-			WithField("action", "new_io url parse error").
-			WithField("type", ioType.Code()).
-			WithField("source", source).
-			WithField("err", err).
-			Debug()
+		log.Debug("action=%s, type=%s, source=%s, err=%s", "new_io url parse err", ioType.Code(), source, err.Error())
 		goto ClientByFile
 	}
 
 	if !(iurl.Scheme == "http" || iurl.Scheme == "https") {
-		logrus.
-			WithField("action", "new_io url scheme error").
-			WithField("type", ioType.Code()).
-			WithField("source", source).
-			WithField("scheme", iurl.Scheme).
-			Debug()
+		log.Debug("action=%s, type=%s, source=%s, scheme=%s", "new_io url scheme error", ioType.Code(), source, iurl.Scheme)
 		goto ClientByFile
 	}
 
 	if iurl.Host == "" {
-		logrus.
-			WithField("action", "new_io url host empty").
-			WithField("type", ioType.Code()).
-			WithField("source", source).
-			Debug()
+		log.Debug("action=%s, type=%s, source=%s", "new_io url host empty", ioType.Code(), source)
 		goto ClientByFile
 	}
 
 	if ioType == interfaces.IOInput && f_query != "" {
 		if err = json.Unmarshal([]byte(f_query), &qm); err != nil {
-			logrus.
-				WithField("action", "new_io query string invalid").
-				WithField("type", ioType.Code()).
-				WithField("source", source).
-				WithField("query", f_query).
-				Debug()
+			log.Debug("action=%s, type=%s, source=%s, query=%s", "new_io query string invalid", ioType.Code(), source, f_query)
 			return nil, fmt.Errorf("invalid query err=%v", err)
 		}
 	}
