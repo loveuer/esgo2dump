@@ -14,6 +14,8 @@ const (
 	LogLevelInfo
 	LogLevelWarn
 	LogLevelError
+	LogLevelPanic
+	LogLevelFatal
 )
 
 type logger struct {
@@ -25,10 +27,13 @@ type logger struct {
 	info       func(prefix, timestamp, msg string, data ...any)
 	warn       func(prefix, timestamp, msg string, data ...any)
 	error      func(prefix, timestamp, msg string, data ...any)
+	panic      func(prefix, timestamp, msg string, data ...any)
+	fatal      func(prefix, timestamp, msg string, data ...any)
 }
 
 var (
 	red    = color.New(color.FgRed)
+	hired  = color.New(color.FgHiRed)
 	green  = color.New(color.FgGreen)
 	yellow = color.New(color.FgYellow)
 	white  = color.New(color.FgWhite)
@@ -67,6 +72,18 @@ func (l *logger) SetLogLevel(level LogLevel) {
 	} else {
 		l.error = normalLogger
 	}
+
+	if level > LogLevelPanic {
+		l.panic = nilLogger
+	} else {
+		l.panic = panicLogger
+	}
+
+	if level > LogLevelFatal {
+		l.fatal = nilLogger
+	} else {
+		l.fatal = fatalLogger
+	}
 }
 
 func (l *logger) Debug(msg string, data ...any) {
@@ -83,6 +100,14 @@ func (l *logger) Warn(msg string, data ...any) {
 
 func (l *logger) Error(msg string, data ...any) {
 	l.error(red.Sprint("Error "), time.Now().Format(l.timeFormat), msg, data...)
+}
+
+func (l *logger) Panic(msg string, data ...any) {
+	l.panic(hired.Sprint("Panic "), time.Now().Format(l.timeFormat), msg, data...)
+}
+
+func (l *logger) Fatal(msg string, data ...any) {
+	l.fatal(hired.Sprint("Fatal "), time.Now().Format(l.timeFormat), msg, data...)
 }
 
 type WroteLogger interface {

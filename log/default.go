@@ -12,6 +12,15 @@ var (
 		fmt.Printf(prefix+"| "+timestamp+" | "+msg+"\n", data...)
 	}
 
+	panicLogger = func(prefix, timestamp, msg string, data ...any) {
+		panic(fmt.Sprintf(prefix+"| "+timestamp+" | "+msg+"\n", data...))
+	}
+
+	fatalLogger = func(prefix, timestamp, msg string, data ...any) {
+		fmt.Printf(prefix+"| "+timestamp+" | "+msg+"\n", data...)
+		os.Exit(1)
+	}
+
 	defaultLogger = &logger{
 		Mutex:      sync.Mutex{},
 		timeFormat: "2006-01-02T15:04:05",
@@ -21,6 +30,8 @@ var (
 		info:       normalLogger,
 		warn:       normalLogger,
 		error:      normalLogger,
+		panic:      panicLogger,
+		fatal:      fatalLogger,
 	}
 )
 
@@ -45,4 +56,12 @@ func Warn(msg string, data ...any) {
 
 func Error(msg string, data ...any) {
 	defaultLogger.Error(msg, data...)
+}
+
+func Panic(msg string, data ...any) {
+	defaultLogger.Panic(msg, data...)
+}
+
+func Fatal(msg string, data ...any) {
+	defaultLogger.Fatal(msg, data...)
 }
