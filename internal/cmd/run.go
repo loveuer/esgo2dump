@@ -209,7 +209,7 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 
 Loop:
 	for _, query := range queries {
-		dch, ech = input.ReadData(ctx, f_limit, query, sources)
+		dch, ech = input.ReadData(ctx, f_limit, query, sources, []string{f_sort})
 
 		for {
 			select {

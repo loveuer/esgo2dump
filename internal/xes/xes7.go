@@ -125,8 +125,8 @@ func (c *client) Close() error {
 //	return count, nil
 //}
 
-func (c *client) ReadData(ctx context.Context, size int, query map[string]any, source []string) (<-chan []*model.ESSource, <-chan error) {
-	dch, ech := es7.ReadData(ctx, c.client, c.index, size, 0, query, source)
+func (c *client) ReadData(ctx context.Context, size int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
+	dch, ech := es7.ReadData(ctx, c.client, c.index, size, 0, query, source, sort)
 
 	return dch, ech
 }

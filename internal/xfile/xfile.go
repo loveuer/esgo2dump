@@ -110,7 +110,7 @@ func (c *client) IsFile() bool {
 	return true
 }
 
-func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []string) (<-chan []*model.ESSource, <-chan error) {
+func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []string, _ []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		err   error
 		count = 0

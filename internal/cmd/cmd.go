@@ -37,6 +37,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 	f_limit  int
 	f_type   string
 	f_source string
+	f_sort   string
 	f_query  string
 
 	f_query_file string
@@ -57,6 +58,7 @@ func init() {
 	rootCommand.Flags().StringVar(&es_oversion, "o-version", "7", "output(es) version")
 	rootCommand.Flags().StringVarP(&f_type, "type", "t", "data", "data/mapping/setting")
 	rootCommand.Flags().StringVarP(&f_source, "source", "s", "", "query source, use ';' to separate")
+	rootCommand.Flags().StringVar(&f_sort, "sort", "", "sort, <field>:<direction> format, for example: time:desc or name:asc")
 	rootCommand.Flags().StringVarP(&f_query, "query", "q", "", `query dsl, example: {"bool":{"must":[{"term":{"name":{"value":"some_name"}}}],"must_not":[{"range":{"age":{"gte":18,"lt":60}}}]}}`)
 	rootCommand.Flags().StringVar(&f_query_file, "query_file", "", `query json file (will execute line by line)`)
 	rootCommand.Flags().IntVarP(&f_limit, "limit", "l", 100, "")

@@ -10,10 +10,14 @@ import (
 	"github.com/loveuer/esgo2dump/internal/util"
 	"github.com/loveuer/esgo2dump/log"
 	"github.com/loveuer/esgo2dump/model"
+	"github.com/samber/lo"
 	"time"
 )
 
-func ReadData(ctx context.Context, client *elastic.Client, index string, size, max int, query map[string]any, source []string) (<-chan []*model.ESSource, <-chan error) {
+// ReadData es7 read data
+// @param[source]: a list of include fields to extract and return from the _source field.
+// @param[sort]:   a list of <field>:<direction> pairs.
+func ReadData(ctx context.Context, client *elastic.Client, index string, size, max int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		dataCh = make(chan []*model.ESSource)
 		errCh  = make(chan error)
@@ -69,6 +73,16 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 
 		if len(source) > 0 {
 			qs = append(qs, client.Search.WithSourceIncludes(source...))
+		}
+
+		if len(sort) > 0 {
+			sorts := lo.Filter(sort, func(item string, index int) bool {
+				return item != ""
+			})
+
+			if len(sorts) > 0 {
+				qs = append(qs, client.Search.WithSort(sorts...))
+			}
 		}
 
 		if query != nil && len(query) > 0 {
