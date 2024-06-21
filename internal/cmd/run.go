@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
@@ -192,17 +193,16 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 
 		e2ch = make(chan error)
 		wch  = make(chan []*model.ESSource)
+		wg   = sync.WaitGroup{}
 	)
 
 	go func() {
-		defer func() {
-			close(wch)
-			close(e2ch)
-		}()
-
+		wg.Add(1)
 		if err = output.WriteData(ctx, wch); err != nil {
 			e2ch <- err
 		}
+
+		wg.Done()
 	}()
 
 	log.Info("Query: got queries=%d", len(queries))
@@ -232,6 +232,10 @@ Loop:
 			}
 		}
 	}
+
+	close(wch)
+
+	wg.Wait()
 
 	return nil
 }
