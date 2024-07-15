@@ -4,6 +4,7 @@ type ESSource struct {
 	DocId   string         `json:"_id"`
 	Index   string         `json:"_index"`
 	Content map[string]any `json:"_source"`
+	Sort    []any          `json:"sort"`
 }
 
 type ESResponse struct {

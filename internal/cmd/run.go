@@ -208,7 +208,11 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 	log.Info("Query: got queries=%d", len(queries))
 
 Loop:
-	for _, query := range queries {
+	for qi, query := range queries {
+		bs, _ := json.Marshal(query)
+
+		log.Debug("Query[%d]: %s", qi, string(bs))
+
 		dch, ech = input.ReadData(ctx, f_limit, query, sources, []string{f_sort})
 
 		for {
