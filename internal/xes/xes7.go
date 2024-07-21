@@ -71,7 +71,7 @@ func (c *client) Close() error {
 }
 
 func (c *client) ReadData(ctx context.Context, size int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
-	dch, ech := es7.ReadDataV2(ctx, c.client, c.index, size, 0, query, source, sort)
+	dch, ech := es7.ReadDataV2(ctx, c.client, c.index, size, size, query, source, sort)
 
 	return dch, ech
 }
