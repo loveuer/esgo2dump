@@ -24,7 +24,7 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 		var (
 			err      error
 			resp     *esapi.Response
-			result   = new(model.ESResponse)
+			result   = new(model.ESResponseV6)
 			scrollId string
 			total    int
 		)
@@ -121,7 +121,7 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 				return
 			}
 
-			result = new(model.ESResponse)
+			result = new(model.ESResponseV6)
 
 			decoder = json.NewDecoder(resp.Body)
 			if err = decoder.Decode(result); err != nil {
