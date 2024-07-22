@@ -159,7 +159,7 @@ func ReadDataV2(
 	ctx context.Context,
 	client *elastic.Client,
 	index string,
-	size, max int,
+	size, max uint64,
 	query map[string]any,
 	source []string,
 	sort []string,
@@ -174,9 +174,9 @@ func ReadDataV2(
 			err         error
 			bs          []byte
 			resp        *esapi.Response
-			searchAfter = make([]any, 0)
-			total       = 0
-			body        = make(map[string]any)
+			searchAfter        = make([]any, 0)
+			total       uint64 = 0
+			body               = make(map[string]any)
 			qs          []func(request *esapi.SearchRequest)
 		)
 
@@ -203,7 +203,7 @@ func ReadDataV2(
 			qs = []func(*esapi.SearchRequest){
 				client.Search.WithContext(util.TimeoutCtx(ctx, 30)),
 				client.Search.WithIndex(index),
-				client.Search.WithSize(util.Min(size, max-total)),
+				client.Search.WithSize(int(util.Min(size, max-total))),
 				client.Search.WithSort(sorts...),
 			}
 
@@ -245,9 +245,9 @@ func ReadDataV2(
 			}
 
 			dataCh <- result.Hits.Hits
-			total += len(result.Hits.Hits)
+			total += uint64(len(result.Hits.Hits))
 
-			if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
+			if uint64(len(result.Hits.Hits)) < size || (max > 0 && total >= max) {
 				break
 			}
 

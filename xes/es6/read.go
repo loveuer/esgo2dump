@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func ReadData(ctx context.Context, client *elastic.Client, index string, size, max int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
+func ReadData(ctx context.Context, client *elastic.Client, index string, size, max uint64, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		dataCh = make(chan []*model.ESSource)
 		errCh  = make(chan error)
@@ -26,7 +26,7 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 			resp     *esapi.Response
 			result   = new(model.ESResponseV6)
 			scrollId string
-			total    int
+			total    uint64
 		)
 
 		defer func() {
@@ -63,7 +63,7 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 		qs := []func(*esapi.SearchRequest){
 			client.Search.WithContext(util.TimeoutCtx(ctx, 20)),
 			client.Search.WithIndex(index),
-			client.Search.WithSize(size),
+			client.Search.WithSize(int(size)),
 			client.Search.WithFrom(0),
 			client.Search.WithScroll(time.Duration(120) * time.Second),
 		}
@@ -106,9 +106,9 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 		scrollId = result.ScrollId
 
 		dataCh <- result.Hits.Hits
-		total += len(result.Hits.Hits)
+		total += uint64(len(result.Hits.Hits))
 
-		if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
+		if uint64(len(result.Hits.Hits)) < size || (max > 0 && total >= max) {
 			return
 		}
 
@@ -135,9 +135,9 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 			}
 
 			dataCh <- result.Hits.Hits
-			total += len(result.Hits.Hits)
+			total += uint64(len(result.Hits.Hits))
 
-			if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
+			if uint64(len(result.Hits.Hits)) < size || (max > 0 && total >= max) {
 				break
 			}
 		}

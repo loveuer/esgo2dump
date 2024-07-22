@@ -110,14 +110,14 @@ func (c *client) IsFile() bool {
 	return true
 }
 
-func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []string, _ []string) (<-chan []*model.ESSource, <-chan error) {
+func (c *client) ReadData(ctx context.Context, size uint64, _ map[string]any, _ []string, _ []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		err   error
-		count = 0
-		list  = make([]*model.ESSource, 0, size)
-		dch   = make(chan []*model.ESSource)
-		ech   = make(chan error)
-		ready = make(chan bool)
+		count uint64 = 0
+		list         = make([]*model.ESSource, 0, size)
+		dch          = make(chan []*model.ESSource)
+		ech          = make(chan error)
+		ready        = make(chan bool)
 	)
 
 	go func(ctx context.Context) {
