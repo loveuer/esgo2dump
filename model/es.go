@@ -7,7 +7,24 @@ type ESSource struct {
 	Sort    []any          `json:"sort"`
 }
 
-type ESResponse struct {
+type ESResponseV6 struct {
+	ScrollId string `json:"_scroll_id"`
+	Took     int    `json:"took"`
+	TimedOut bool   `json:"timed_out"`
+	Shards   struct {
+		Total      int `json:"total"`
+		Successful int `json:"successful"`
+		Skipped    int `json:"skipped"`
+		Failed     int `json:"failed"`
+	} `json:"_shards"`
+	Hits struct {
+		Total    int         `json:"total"`
+		MaxScore float64     `json:"max_score"`
+		Hits     []*ESSource `json:"hits"`
+	} `json:"hits"`
+}
+
+type ESResponseV7 struct {
 	ScrollId string `json:"_scroll_id"`
 	Took     int    `json:"took"`
 	TimedOut bool   `json:"timed_out"`
