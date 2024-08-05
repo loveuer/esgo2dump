@@ -199,11 +199,14 @@ func ReadDataV2(
 			close(errCh)
 		}()
 
+		fina_size := util.AbsMin(size, max-total)
+		log.Debug("es7.read: size = %d, max = %d, total = %d, fina size = %d", size, max, total, fina_size)
+
 		for {
 			qs = []func(*esapi.SearchRequest){
 				client.Search.WithContext(util.TimeoutCtx(ctx, 30)),
 				client.Search.WithIndex(index),
-				client.Search.WithSize(int(util.Min(size, max-total))),
+				client.Search.WithSize(int(fina_size)),
 				client.Search.WithSort(sorts...),
 			}
 
@@ -220,6 +223,8 @@ func ReadDataV2(
 				errCh <- err
 				return
 			}
+
+			log.Debug("body raw: %s", string(bs))
 
 			qs = append(qs, client.Search.WithBody(bytes.NewReader(bs)))
 			if resp, err = client.Search(qs...); err != nil {
@@ -246,6 +251,8 @@ func ReadDataV2(
 
 			dataCh <- result.Hits.Hits
 			total += uint64(len(result.Hits.Hits))
+
+			log.Debug("es7.read: total: %d", total)
 
 			if uint64(len(result.Hits.Hits)) < size || (max > 0 && total >= max) {
 				break

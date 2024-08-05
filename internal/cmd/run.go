@@ -51,10 +51,6 @@ func run(cmd *cobra.Command, args []string) error {
 		ioo interfaces.DumpIO
 	)
 
-	if opt.Debug {
-		log.SetLogLevel(log.LogLevelDebug)
-	}
-
 	if f_version {
 		fmt.Printf("esgo2dump (Version: %s)\n", opt.Version)
 		os.Exit(0)

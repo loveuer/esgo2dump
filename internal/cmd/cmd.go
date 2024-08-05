@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"github.com/loveuer/esgo2dump/log"
 
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/spf13/cobra"
@@ -48,7 +49,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 )
 
 func init() {
-	rootCommand.Flags().BoolVar(&opt.Debug, "debug", false, "")
+	rootCommand.PersistentFlags().BoolVar(&opt.Debug, "debug", false, "")
 	rootCommand.Flags().BoolVarP(&f_version, "version", "v", false, "print esgo2dump version")
 	rootCommand.Flags().IntVar(&opt.Timeout, "timeout", 30, "max timeout seconds per operation with limit")
 
@@ -62,6 +63,12 @@ func init() {
 	rootCommand.Flags().StringVarP(&f_query, "query", "q", "", `query dsl, example: {"bool":{"must":[{"term":{"name":{"value":"some_name"}}}],"must_not":[{"range":{"age":{"gte":18,"lt":60}}}]}}`)
 	rootCommand.Flags().StringVar(&f_query_file, "query_file", "", `query json file (will execute line by line)`)
 	rootCommand.Flags().Uint64VarP(&f_limit, "limit", "l", 100, "")
+
+	rootCommand.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		if opt.Debug {
+			log.SetLogLevel(log.LogLevelDebug)
+		}
+	}
 }
 
 func Start(ctx context.Context) error {
