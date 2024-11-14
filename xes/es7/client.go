@@ -7,9 +7,11 @@ import (
 	elastic "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/loveuer/esgo2dump/internal/util"
+	"github.com/samber/lo"
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -21,7 +23,12 @@ func NewClient(ctx context.Context, url *url.URL) (*elastic.Client, error) {
 		client      *elastic.Client
 		errCh       = make(chan error)
 		cliCh       = make(chan *elastic.Client)
-		address     = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
+		endpoints   = lo.Map(
+			strings.Split(url.Host, ","),
+			func(item string, index int) string {
+				return fmt.Sprintf("%s://%s", url.Scheme, item)
+			},
+		)
 	)
 
 	if url.User != nil {
@@ -71,12 +78,12 @@ func NewClient(ctx context.Context, url *url.URL) (*elastic.Client, error) {
 		cliCh <- cli
 	}
 
-	go ncFunc([]string{address}, urlUsername, urlPassword)
+	go ncFunc(endpoints, urlUsername, urlPassword)
 	timeout := util.TimeoutCtx(ctx, 10)
 
 	select {
 	case <-timeout.Done():
-		return nil, fmt.Errorf("dial es=%s err=%v", address, context.DeadlineExceeded)
+		return nil, fmt.Errorf("dial es=%v err=%v", endpoints, context.DeadlineExceeded)
 	case client = <-cliCh:
 		return client, nil
 	case err = <-errCh:
