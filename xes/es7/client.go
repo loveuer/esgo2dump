@@ -4,15 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
-	elastic "github.com/elastic/go-elasticsearch/v7"
-	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/loveuer/esgo2dump/internal/util"
-	"github.com/samber/lo"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	elastic "github.com/elastic/go-elasticsearch/v7"
+	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/loveuer/esgo2dump/internal/tool"
+	"github.com/samber/lo"
 )
 
 func NewClient(ctx context.Context, url *url.URL) (*elastic.Client, error) {
@@ -79,7 +80,7 @@ func NewClient(ctx context.Context, url *url.URL) (*elastic.Client, error) {
 	}
 
 	go ncFunc(endpoints, urlUsername, urlPassword)
-	timeout := util.TimeoutCtx(ctx, 10)
+	timeout := tool.TimeoutCtx(ctx, 10)
 
 	select {
 	case <-timeout.Done():

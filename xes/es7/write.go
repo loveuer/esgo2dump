@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	elastic "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esutil"
-	"github.com/loveuer/esgo2dump/log"
 	"github.com/loveuer/esgo2dump/model"
+	"github.com/loveuer/nf/nft/log"
 )
 
 func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh <-chan []*model.ESSource, logs ...log.WroteLogger) error {
@@ -38,7 +39,6 @@ func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh
 				Index:      index,
 				ErrorTrace: true,
 				OnError: func(ctx context.Context, err error) {
-
 				},
 			}); err != nil {
 				return err

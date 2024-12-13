@@ -2,8 +2,13 @@ package cmd
 
 import (
 	"context"
+	"fmt"
+	"os"
+
+	"github.com/loveuer/nf/nft/log"
 
 	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/internal/tool"
 	"github.com/spf13/cobra"
 )
 
@@ -14,6 +19,20 @@ var (
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		RunE:          run,
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if opt.Cfg.Debug {
+				log.SetLogLevel(log.LogLevelDebug)
+			}
+
+			if opt.Cfg.Args.Version {
+				fmt.Printf("esgo2dump version: %s\n", opt.Version)
+				os.Exit(0)
+			}
+
+			if opt.Cfg.Debug {
+				tool.TablePrinter(opt.Cfg)
+			}
+		},
 		Example: `
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json
 
@@ -32,36 +51,25 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query=
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_file=my_queries.json`,
 	}
 
-	f_input  string
-	f_output string
-	f_limit  uint64
-	f_type   string
-	f_source string
-	f_sort   string
-	f_query  string
-
-	f_query_file string
-
-	f_version bool
-
 	es_iversion, es_oversion string
 )
 
 func init() {
-	rootCommand.Flags().BoolVar(&opt.Debug, "debug", false, "")
-	rootCommand.Flags().BoolVarP(&f_version, "version", "v", false, "print esgo2dump version")
-	rootCommand.Flags().IntVar(&opt.Timeout, "timeout", 30, "max timeout seconds per operation with limit")
+	rootCommand.PersistentFlags().BoolVar(&opt.Cfg.Debug, "debug", false, "")
+	rootCommand.PersistentFlags().BoolVar(&opt.Cfg.Dev, "dev", false, "")
+	rootCommand.PersistentFlags().BoolVarP(&opt.Cfg.Args.Version, "version", "v", false, "print esgo2dump version")
 
-	rootCommand.Flags().StringVarP(&f_input, "input", "i", "", "*required: input file or es url (example :data.json / http://127.0.0.1:9200/my_index)")
-	rootCommand.Flags().StringVarP(&f_output, "output", "o", "output.json", "")
+	rootCommand.Flags().IntVar(&opt.Cfg.Args.Timeout, "timeout", 30, "max timeout seconds per operation with limit")
+	rootCommand.Flags().StringVarP(&opt.Cfg.Args.Input, "input", "i", "", "*required: input file or es url (example :data.json / http://127.0.0.1:9200/my_index)")
+	rootCommand.Flags().StringVarP(&opt.Cfg.Args.Output, "output", "o", "output.json", "")
 	rootCommand.Flags().StringVar(&es_iversion, "i-version", "7", "input(es) version")
 	rootCommand.Flags().StringVar(&es_oversion, "o-version", "7", "output(es) version")
-	rootCommand.Flags().StringVarP(&f_type, "type", "t", "data", "data/mapping/setting")
-	rootCommand.Flags().StringVarP(&f_source, "source", "s", "", "query source, use ';' to separate")
-	rootCommand.Flags().StringVar(&f_sort, "sort", "", "sort, <field>:<direction> format, for example: time:desc or name:asc")
-	rootCommand.Flags().StringVarP(&f_query, "query", "q", "", `query dsl, example: {"bool":{"must":[{"term":{"name":{"value":"some_name"}}}],"must_not":[{"range":{"age":{"gte":18,"lt":60}}}]}}`)
-	rootCommand.Flags().StringVar(&f_query_file, "query_file", "", `query json file (will execute line by line)`)
-	rootCommand.Flags().Uint64VarP(&f_limit, "limit", "l", 100, "")
+	rootCommand.Flags().StringVarP(&opt.Cfg.Args.Type, "type", "t", "data", "data/mapping/setting")
+	rootCommand.Flags().StringVar(&opt.Cfg.Args.Source, "source", "", "query source, use ';' to separate")
+	rootCommand.Flags().StringVar(&opt.Cfg.Args.Sort, "sort", "", "sort, <field>:<direction> format, for example: time:desc or name:asc")
+	rootCommand.Flags().StringVar(&opt.Cfg.Args.Query, "query", "", `query dsl, example: {"bool":{"must":[{"term":{"name":{"value":"some_name"}}}],"must_not":[{"range":{"age":{"gte":18,"lt":60}}}]}}`)
+	rootCommand.Flags().StringVar(&opt.Cfg.Args.QueryFile, "query_file", "", `query json file (will execute line by line)`)
+	rootCommand.Flags().IntVar(&opt.Cfg.Args.Limit, "limit", 100, "")
 }
 
 func Start(ctx context.Context) error {

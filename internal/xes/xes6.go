@@ -6,24 +6,24 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"github.com/loveuer/esgo2dump/log"
-	"github.com/loveuer/esgo2dump/model"
-	"github.com/loveuer/esgo2dump/xes/es6"
 	"net"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
+	"github.com/loveuer/esgo2dump/model"
+	"github.com/loveuer/esgo2dump/xes/es6"
+	"github.com/loveuer/nf/nft/log"
+
 	elastic "github.com/elastic/go-elasticsearch/v6"
 	"github.com/elastic/go-elasticsearch/v6/esapi"
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
-	"github.com/loveuer/esgo2dump/internal/util"
+	"github.com/loveuer/esgo2dump/internal/tool"
 )
 
 func NewClientV6(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
-
 	var (
 		address     = fmt.Sprintf("%s://%s", url.Scheme, url.Host)
 		urlIndex    = strings.TrimPrefix(url.Path, "/")
@@ -92,7 +92,7 @@ func NewClientV6(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
 	go ncFunc([]string{address}, urlUsername, urlPassword, urlIndex)
 
 	select {
-	case <-util.Timeout(10).Done():
+	case <-tool.Timeout(10).Done():
 		return nil, fmt.Errorf("dial es=%s err=%v", address, context.DeadlineExceeded)
 	case c := <-cliCh:
 		return &clientv6{client: c, index: urlIndex, iot: iot}, nil
@@ -135,7 +135,7 @@ func (c *clientv6) Close() error {
 	return nil
 }
 
-func (c *clientv6) ReadData(ctx context.Context, size uint64, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
+func (c *clientv6) ReadData(ctx context.Context, size int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
 	dch, ech := es6.ReadData(ctx, c.client, c.index, size, 0, query, source, sort)
 
 	return dch, ech
@@ -161,6 +161,7 @@ func (c *clientv6) ReadMapping(ctx context.Context) (map[string]any, error) {
 
 	return m, nil
 }
+
 func (c *clientv6) WriteMapping(ctx context.Context, m map[string]any) error {
 	var (
 		err    error
@@ -175,7 +176,7 @@ func (c *clientv6) WriteMapping(ctx context.Context, m map[string]any) error {
 
 		if result, err = c.client.Indices.Create(
 			c.index,
-			c.client.Indices.Create.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+			c.client.Indices.Create.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
 			c.client.Indices.Create.WithBody(bytes.NewReader(bs)),
 		); err != nil {
 			return err
@@ -191,7 +192,7 @@ func (c *clientv6) WriteMapping(ctx context.Context, m map[string]any) error {
 
 func (c *clientv6) ReadSetting(ctx context.Context) (map[string]any, error) {
 	r, err := c.client.Indices.GetSettings(
-		c.client.Indices.GetSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+		c.client.Indices.GetSettings.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
 		c.client.Indices.GetSettings.WithIndex(c.index),
 	)
 	if err != nil {
@@ -224,7 +225,7 @@ func (c *clientv6) WriteSetting(ctx context.Context, m map[string]any) error {
 
 	if result, err = c.client.Indices.PutSettings(
 		bytes.NewReader(bs),
-		c.client.Indices.PutSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+		c.client.Indices.PutSettings.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
 	); err != nil {
 		return err
 	}

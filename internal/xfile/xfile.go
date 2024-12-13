@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
-	"github.com/loveuer/esgo2dump/internal/opt"
-	"github.com/loveuer/esgo2dump/log"
-	"github.com/loveuer/esgo2dump/model"
 	"io"
 	"os"
+
+	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/model"
+	"github.com/loveuer/nf/nft/log"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 )
@@ -110,14 +111,14 @@ func (c *client) IsFile() bool {
 	return true
 }
 
-func (c *client) ReadData(ctx context.Context, size uint64, _ map[string]any, _ []string, _ []string) (<-chan []*model.ESSource, <-chan error) {
+func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []string, _ []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		err   error
-		count uint64 = 0
-		list         = make([]*model.ESSource, 0, size)
-		dch          = make(chan []*model.ESSource)
-		ech          = make(chan error)
-		ready        = make(chan bool)
+		count int = 0
+		list      = make([]*model.ESSource, 0, size)
+		dch       = make(chan []*model.ESSource)
+		ech       = make(chan error)
+		ready     = make(chan bool)
 	)
 
 	go func(ctx context.Context) {

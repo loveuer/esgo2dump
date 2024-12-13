@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
+
 	elastic "github.com/elastic/go-elasticsearch/v6"
 	"github.com/elastic/go-elasticsearch/v6/esapi"
-	"github.com/loveuer/esgo2dump/internal/util"
-	"github.com/loveuer/esgo2dump/log"
+	"github.com/loveuer/esgo2dump/internal/tool"
 	"github.com/loveuer/esgo2dump/model"
+	"github.com/loveuer/nf/nft/log"
 	"github.com/samber/lo"
-	"time"
 )
 
-func ReadData(ctx context.Context, client *elastic.Client, index string, size, max uint64, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
+func ReadData(ctx context.Context, client *elastic.Client, index string, size, max int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
 	var (
 		dataCh = make(chan []*model.ESSource)
 		errCh  = make(chan error)
@@ -26,7 +27,7 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 			resp     *esapi.Response
 			result   = new(model.ESResponseV6)
 			scrollId string
-			total    uint64
+			total    int
 		)
 
 		defer func() {
@@ -38,12 +39,10 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 					"scroll_id": scrollId,
 				})
 
-				var (
-					rr *esapi.Response
-				)
+				var rr *esapi.Response
 
 				if rr, err = client.ClearScroll(
-					client.ClearScroll.WithContext(util.Timeout(3)),
+					client.ClearScroll.WithContext(tool.Timeout(3)),
 					client.ClearScroll.WithBody(bytes.NewReader(bs)),
 				); err != nil {
 					log.Warn("clear scroll id=%s err=%v", scrollId, err)
@@ -61,7 +60,7 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 		}
 
 		qs := []func(*esapi.SearchRequest){
-			client.Search.WithContext(util.TimeoutCtx(ctx, 20)),
+			client.Search.WithContext(tool.TimeoutCtx(ctx, 20)),
 			client.Search.WithIndex(index),
 			client.Search.WithSize(int(size)),
 			client.Search.WithFrom(0),
@@ -106,9 +105,9 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 		scrollId = result.ScrollId
 
 		dataCh <- result.Hits.Hits
-		total += uint64(len(result.Hits.Hits))
+		total += len(result.Hits.Hits)
 
-		if uint64(len(result.Hits.Hits)) < size || (max > 0 && total >= max) {
+		if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
 			return
 		}
 
@@ -135,9 +134,9 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 			}
 
 			dataCh <- result.Hits.Hits
-			total += uint64(len(result.Hits.Hits))
+			total += len(result.Hits.Hits)
 
-			if uint64(len(result.Hits.Hits)) < size || (max > 0 && total >= max) {
+			if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
 				break
 			}
 		}

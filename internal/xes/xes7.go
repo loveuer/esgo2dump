@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
+	"strings"
+
 	elastic "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
-	"github.com/loveuer/esgo2dump/internal/util"
-	"github.com/loveuer/esgo2dump/log"
+	"github.com/loveuer/esgo2dump/internal/tool"
 	"github.com/loveuer/esgo2dump/model"
 	"github.com/loveuer/esgo2dump/xes/es7"
-	"net/url"
-	"strings"
+	"github.com/loveuer/nf/nft/log"
 )
 
 type client struct {
@@ -32,7 +33,6 @@ func (c *client) WriteData(ctx context.Context, docsCh <-chan []*model.ESSource)
 }
 
 func NewClient(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
-
 	var (
 		urlIndex = strings.TrimPrefix(url.Path, "/")
 		cli      *elastic.Client
@@ -70,8 +70,8 @@ func (c *client) Close() error {
 	return nil
 }
 
-func (c *client) ReadData(ctx context.Context, size uint64, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
-	dch, ech := es7.ReadDataV2(ctx, c.client, c.index, size, 0, query, source, sort)
+func (c *client) ReadData(ctx context.Context, size int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
+	dch, ech := es7.ReadData(ctx, c.client, c.index, size, 0, query, source, sort)
 
 	return dch, ech
 }
@@ -96,6 +96,7 @@ func (c *client) ReadMapping(ctx context.Context) (map[string]any, error) {
 
 	return m, nil
 }
+
 func (c *client) WriteMapping(ctx context.Context, m map[string]any) error {
 	var (
 		err    error
@@ -110,7 +111,7 @@ func (c *client) WriteMapping(ctx context.Context, m map[string]any) error {
 
 		if result, err = c.client.Indices.Create(
 			c.index,
-			c.client.Indices.Create.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+			c.client.Indices.Create.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
 			c.client.Indices.Create.WithBody(bytes.NewReader(bs)),
 		); err != nil {
 			return err
@@ -126,7 +127,7 @@ func (c *client) WriteMapping(ctx context.Context, m map[string]any) error {
 
 func (c *client) ReadSetting(ctx context.Context) (map[string]any, error) {
 	r, err := c.client.Indices.GetSettings(
-		c.client.Indices.GetSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+		c.client.Indices.GetSettings.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
 		c.client.Indices.GetSettings.WithIndex(c.index),
 	)
 	if err != nil {
@@ -159,7 +160,7 @@ func (c *client) WriteSetting(ctx context.Context, m map[string]any) error {
 
 	if result, err = c.client.Indices.PutSettings(
 		bytes.NewReader(bs),
-		c.client.Indices.PutSettings.WithContext(util.TimeoutCtx(ctx, opt.Timeout)),
+		c.client.Indices.PutSettings.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
 	); err != nil {
 		return err
 	}

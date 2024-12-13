@@ -6,12 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/loveuer/esgo2dump/log"
-	"github.com/loveuer/esgo2dump/model"
 	"net/url"
 	"os"
 	"strings"
 	"sync"
+
+	"github.com/loveuer/esgo2dump/model"
+	"github.com/loveuer/nf/nft/log"
 
 	"github.com/loveuer/esgo2dump/internal/interfaces"
 	"github.com/loveuer/esgo2dump/internal/opt"
@@ -22,23 +23,23 @@ import (
 )
 
 func check(cmd *cobra.Command) error {
-	if f_input == "" {
+	if opt.Cfg.Args.Input == "" {
 		return cmd.Help()
-		//return fmt.Errorf("must specify input(example: data.json/http://127.0.0.1:9200/my_index)")
+		// return fmt.Errorf("must specify input(example: data.json/http://127.0.0.1:9200/my_index)")
 	}
 
-	if f_limit == 0 || f_limit > 10000 {
+	if opt.Cfg.Args.Limit == 0 || opt.Cfg.Args.Limit > 10000 {
 		return fmt.Errorf("invalid limit(1 - 10000)")
 	}
 
-	if f_query != "" && f_query_file != "" {
+	if opt.Cfg.Args.Query != "" && opt.Cfg.Args.QueryFile != "" {
 		return fmt.Errorf("cannot specify both query and query_file at the same time")
 	}
 
-	switch f_type {
+	switch opt.Cfg.Args.Type {
 	case "data", "mapping", "setting":
 	default:
-		return fmt.Errorf("unknown type=%s", f_type)
+		return fmt.Errorf("unknown type=%s", opt.Cfg.Args.Type)
 	}
 
 	return nil
@@ -51,24 +52,15 @@ func run(cmd *cobra.Command, args []string) error {
 		ioo interfaces.DumpIO
 	)
 
-	if opt.Debug {
-		log.SetLogLevel(log.LogLevelDebug)
-	}
-
-	if f_version {
-		fmt.Printf("esgo2dump (Version: %s)\n", opt.Version)
-		os.Exit(0)
-	}
-
 	if err = check(cmd); err != nil {
 		return err
 	}
 
-	if ioi, err = newIO(f_input, interfaces.IOInput, es_iversion); err != nil {
+	if ioi, err = newIO(opt.Cfg.Args.Input, interfaces.IOInput, es_iversion); err != nil {
 		return err
 	}
 
-	if ioo, err = newIO(f_output, interfaces.IOOutput, es_oversion); err != nil {
+	if ioo, err = newIO(opt.Cfg.Args.Output, interfaces.IOOutput, es_oversion); err != nil {
 		return err
 	}
 
@@ -77,15 +69,15 @@ func run(cmd *cobra.Command, args []string) error {
 		_ = ioo.Close()
 	}()
 
-	if (f_query_file != "" || f_query != "") && ioi.IsFile() {
+	if (opt.Cfg.Args.Query != "" || opt.Cfg.Args.QueryFile != "") && ioi.IsFile() {
 		return fmt.Errorf("with file input, query or query_file can't be supported")
 	}
 
-	if (f_source != "") && ioi.IsFile() {
+	if (opt.Cfg.Args.Source != "") && ioi.IsFile() {
 		return fmt.Errorf("with file input, source can't be supported")
 	}
 
-	switch f_type {
+	switch opt.Cfg.Args.Type {
 	case "data":
 		if err = executeData(cmd.Context(), ioi, ioo); err != nil {
 			return err
@@ -121,7 +113,7 @@ func run(cmd *cobra.Command, args []string) error {
 
 		return nil
 	default:
-		return fmt.Errorf("unknown type=%s", f_type)
+		return fmt.Errorf("unknown type=%s", opt.Cfg.Args.Type)
 	}
 }
 
@@ -132,27 +124,25 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		sources = make([]string, 0)
 	)
 
-	if f_source != "" {
-		sources = lo.Map(strings.Split(f_source, ";"), func(item string, idx int) string {
+	if opt.Cfg.Args.Source != "" {
+		sources = lo.Map(strings.Split(opt.Cfg.Args.Source, ";"), func(item string, idx int) string {
 			return strings.TrimSpace(item)
 		})
 	}
 
-	if f_query != "" {
+	if opt.Cfg.Args.Query != "" {
 		query := make(map[string]any)
-		if err = json.Unmarshal([]byte(f_query), &query); err != nil {
+		if err = json.Unmarshal([]byte(opt.Cfg.Args.Query), &query); err != nil {
 			return fmt.Errorf("invalid query err=%v", err)
 		}
 
 		queries = append(queries, query)
 	}
 
-	if f_query_file != "" {
-		var (
-			qf *os.File
-		)
+	if opt.Cfg.Args.QueryFile != "" {
+		var qf *os.File
 
-		if qf, err = os.Open(f_query_file); err != nil {
+		if qf, err = os.Open(opt.Cfg.Args.QueryFile); err != nil {
 			return fmt.Errorf("open query_file err=%v", err)
 		}
 
@@ -208,12 +198,12 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 	log.Info("Query: got queries=%d", len(queries))
 
 Loop:
-	for qi, query := range queries {
+	for queryIdx, query := range queries {
 		bs, _ := json.Marshal(query)
 
-		log.Debug("Query[%d]: %s", qi, string(bs))
+		log.Debug("Query[%d]: %s", queryIdx, string(bs))
 
-		dch, ech = input.ReadData(ctx, f_limit, query, sources, []string{f_sort})
+		dch, ech = input.ReadData(ctx, opt.Cfg.Args.Limit, query, sources, []string{opt.Cfg.Args.Sort})
 
 		for {
 			select {
@@ -269,9 +259,9 @@ func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, 
 		goto ClientByFile
 	}
 
-	if ioType == interfaces.IOInput && f_query != "" {
-		if err = json.Unmarshal([]byte(f_query), &qm); err != nil {
-			log.Debug("action=%s, type=%s, source=%s, query=%s", "new_io query string invalid", ioType.Code(), source, f_query)
+	if ioType == interfaces.IOInput && opt.Cfg.Args.Query != "" {
+		if err = json.Unmarshal([]byte(opt.Cfg.Args.Query), &qm); err != nil {
+			log.Debug("action=%s, type=%s, source=%s, query=%s", "new_io query string invalid", ioType.Code(), source, opt.Cfg.Args.Query)
 			return nil, fmt.Errorf("invalid query err=%v", err)
 		}
 	}
@@ -294,7 +284,7 @@ ClientByFile:
 		}
 	}
 
-	if file, err = os.OpenFile(source, os.O_CREATE|os.O_RDWR, 0644); err != nil {
+	if file, err = os.OpenFile(source, os.O_CREATE|os.O_RDWR, 0o644); err != nil {
 		return nil, err
 	}
 

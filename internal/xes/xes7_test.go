@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	elastic "github.com/elastic/go-elasticsearch/v7"
-	"github.com/loveuer/esgo2dump/internal/util"
+	"github.com/loveuer/esgo2dump/internal/tool"
 )
 
 func TestGetESMapping(t *testing.T) {
@@ -22,7 +22,7 @@ func TestGetESMapping(t *testing.T) {
 		return
 	}
 
-	resp, err := cli.Info(cli.Info.WithContext(util.Timeout(5)))
+	resp, err := cli.Info(cli.Info.WithContext(tool.Timeout(5)))
 	if err != nil {
 		t.Error(2, err)
 		return
@@ -43,7 +43,7 @@ func TestGetESMapping(t *testing.T) {
 
 func TestScanWithInterrupt(t *testing.T) {
 	filename := "test_scan.txt"
-	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0644)
+	f, err := os.OpenFile(filename, os.O_RDWR|os.O_CREATE, 0o644)
 	if err != nil {
 		t.Error(1, err)
 		return
