@@ -268,7 +268,7 @@ func newIO(source string, ioType interfaces.IO, esv string) (interfaces.DumpIO, 
 
 	switch esv {
 	case "7":
-		return xes.NewClient(iurl, ioType)
+		return xes.NewClient(source, ioType)
 	case "6":
 		return xes.NewClientV6(iurl, ioType)
 	case "8":

@@ -15,9 +15,10 @@ type args struct {
 }
 
 type config struct {
-	Debug bool `json:"-"`
-	Dev   bool `json:"-"`
-	Args  args `json:"-"`
+	Debug       bool `json:"-"`
+	Dev         bool `json:"-"`
+	DisablePing bool `json:"-"`
+	Args        args `json:"-"`
 }
 
 var Cfg = &config{}

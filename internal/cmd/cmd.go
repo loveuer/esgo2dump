@@ -57,6 +57,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 func init() {
 	rootCommand.PersistentFlags().BoolVar(&opt.Cfg.Debug, "debug", false, "")
 	rootCommand.PersistentFlags().BoolVar(&opt.Cfg.Dev, "dev", false, "")
+	rootCommand.PersistentFlags().BoolVar(&opt.Cfg.DisablePing, "disable-ping", false, "")
 	rootCommand.PersistentFlags().BoolVarP(&opt.Cfg.Args.Version, "version", "v", false, "print esgo2dump version")
 
 	rootCommand.Flags().IntVar(&opt.Cfg.Args.Timeout, "timeout", 30, "max timeout seconds per operation with limit")

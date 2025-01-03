@@ -32,22 +32,27 @@ func (c *client) WriteData(ctx context.Context, docsCh <-chan []*model.ESSource)
 	return es7.WriteData(ctx, c.client, c.index, docsCh, c)
 }
 
-func NewClient(url *url.URL, iot interfaces.IO) (interfaces.DumpIO, error) {
+func NewClient(uri string, iot interfaces.IO) (interfaces.DumpIO, error) {
 	var (
-		urlIndex = strings.TrimPrefix(url.Path, "/")
-		cli      *elastic.Client
-		err      error
+		cli   *elastic.Client
+		err   error
+		ins   *url.URL
+		index string
 	)
 
-	if urlIndex == "" {
-		return nil, fmt.Errorf("please specify index name: (like => http://127.0.0.1:9200/my_index)")
-	}
-
-	if cli, err = es7.NewClient(context.TODO(), url); err != nil {
+	if ins, err = url.Parse(uri); err != nil {
 		return nil, err
 	}
 
-	return &client{client: cli, iot: iot, index: urlIndex}, nil
+	if index = strings.TrimSpace(strings.TrimPrefix(ins.Path, "/")); index == "" {
+		return nil, fmt.Errorf("please specify index name: (like => http://127.0.0.1:9200/my_index)")
+	}
+
+	if cli, err = es7.NewClient(context.TODO(), uri, es7.Config{DisablePing: opt.Cfg.DisablePing}); err != nil {
+		return nil, err
+	}
+
+	return &client{client: cli, iot: iot, index: index}, nil
 }
 
 func (c *client) checkResponse(r *esapi.Response) error {
