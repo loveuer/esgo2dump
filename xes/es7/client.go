@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -16,8 +17,14 @@ import (
 	"github.com/samber/lo"
 )
 
+// Deprecated. use uri query: http://<username>:<password>@example.com:port?ping=false&...
 type Config struct {
 	DisablePing bool
+}
+
+type UriConfig struct {
+	Ping  bool `json:"ping"`
+	Sniff bool `json:"sniff"`
 }
 
 // NewClient
@@ -55,6 +62,12 @@ func NewClient(ctx context.Context, uri string, configs ...Config) (*elastic.Cli
 		password, _ = ins.User.Password()
 	}
 
+	query := ins.Query()
+
+	cfg2 := &UriConfig{}
+	cfg2.Ping, _ = strconv.ParseBool(query.Get("ping"))
+	cfg2.Sniff, _ = strconv.ParseBool(query.Get("sniff"))
+
 	if client, err = elastic.NewClient(
 		elastic.Config{
 			Addresses:     endpoints,
@@ -68,12 +81,15 @@ func NewClient(ctx context.Context, uri string, configs ...Config) (*elastic.Cli
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 				DialContext:     (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
 			},
+			DiscoverNodesOnStart: cfg2.Sniff,
 		},
 	); err != nil {
 		return nil, err
 	}
 
-	if !cfg.DisablePing {
+	// Deprecated.
+	cfg.DisablePing = cfg.DisablePing || cfg2.Ping
+	if cfg.DisablePing {
 		var res *esapi.Response
 		if res, err = client.Ping(client.Ping.WithContext(tool.TimeoutCtx(ctx, 5))); err != nil {
 			return nil, err
