@@ -35,11 +35,28 @@ func WriteData(ctx context.Context, client *elastic.Client, index string, docsCh
 			count := 0
 
 			if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
-				Client:     client,
-				Index:      index,
-				ErrorTrace: true,
+				NumWorkers:    0,
+				FlushBytes:    0,
+				FlushInterval: 0,
+				Client:        client,
+				Decoder:       nil,
 				OnError: func(ctx context.Context, err error) {
+					log.Error("es7.writer: on error log, err = %s", err.Error())
 				},
+				Index:               index,
+				ErrorTrace:          true,
+				FilterPath:          []string{},
+				Header:              map[string][]string{},
+				Human:               false,
+				Pipeline:            "",
+				Pretty:              false,
+				Refresh:             "",
+				Routing:             "",
+				Source:              []string{},
+				SourceExcludes:      []string{},
+				SourceIncludes:      []string{},
+				Timeout:             0,
+				WaitForActiveShards: "",
 			}); err != nil {
 				return err
 			}

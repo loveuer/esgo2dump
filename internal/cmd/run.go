@@ -60,9 +60,13 @@ func run(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	log.Debug("init: new input io success!")
+
 	if ioo, err = newIO(opt.Cfg.Args.Output, interfaces.IOOutput, es_oversion); err != nil {
 		return err
 	}
+
+	log.Debug("init: new output io success!")
 
 	defer func() {
 		_ = ioi.Close()
@@ -186,10 +190,10 @@ func executeData(ctx context.Context, input, output interfaces.DumpIO) error {
 		wg   = sync.WaitGroup{}
 	)
 
+	wg.Add(1)
 	go func() {
-		wg.Add(1)
 		if err = output.WriteData(ctx, wch); err != nil {
-			e2ch <- err
+			log.Fatal("Dump: write data err: %s", err.Error())
 		}
 
 		wg.Done()
@@ -210,17 +214,25 @@ Loop:
 			case <-ctx.Done():
 				return ctx.Err()
 			case err, ok = <-ech:
-				if err != nil {
-					return err
+				if !ok {
+					log.Debug("pipe: read io closed")
+					continue Loop
 				}
-
-				continue Loop
-			case err, _ = <-e2ch:
+				log.Debug("pipe: got err from read io, err = %s", err.Error())
+				return err
+			case err, ok = <-e2ch:
+				if !ok {
+					log.Debug("pipe: write io closed")
+					continue Loop
+				}
+				log.Debug("pipe: got err from write io, err = %s", err.Error())
 				return err
 			case docs, ok = <-dch:
 				if !ok || len(docs) == 0 {
 					continue Loop
 				}
+
+				log.Debug("pipe: got %d docs from read io", len(docs))
 
 				wch <- docs
 			}
@@ -229,6 +241,7 @@ Loop:
 
 	close(wch)
 
+	log.Debug("pipe: wait for all io closed")
 	wg.Wait()
 
 	return nil

@@ -119,6 +119,7 @@ func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []s
 		dch       = make(chan []*model.ESSource)
 		ech       = make(chan error)
 		ready     = make(chan bool)
+		total     = 0
 	)
 
 	go func(ctx context.Context) {
@@ -144,6 +145,7 @@ func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []s
 
 				list = append(list, item)
 				count++
+				total++
 
 				if count >= size {
 					dch <- list
@@ -162,6 +164,8 @@ func (c *client) ReadData(ctx context.Context, size int, _ map[string]any, _ []s
 		if err = c.scanner.Err(); err != nil {
 			ech <- err
 		}
+
+		log.Debug("read: read file succeed! total=%d", total)
 	}(ctx)
 
 	<-ready

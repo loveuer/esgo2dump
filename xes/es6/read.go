@@ -32,7 +32,6 @@ func ReadData(ctx context.Context, client *elastic.Client, index string, size, m
 
 		defer func() {
 			close(dataCh)
-			close(errCh)
 
 			if scrollId != "" {
 				bs, _ := json.Marshal(map[string]string{
