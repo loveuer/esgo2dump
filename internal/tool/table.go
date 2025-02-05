@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
-	"github.com/loveuer/nf/nft/log"
+	"github.com/loveuer/esgo2dump/pkg/log"
 )
 
 func TablePrinter(data any, writers ...io.Writer) {

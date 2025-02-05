@@ -8,7 +8,7 @@ type args struct {
 	Max       int
 	Type      string
 	Timeout   int
-	Source    string
+	Field     string
 	Sort      string
 	Query     string
 	QueryFile string

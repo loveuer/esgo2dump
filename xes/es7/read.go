@@ -5,260 +5,272 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/elastic/go-elasticsearch/v7/esutil"
+	"github.com/loveuer/esgo2dump/internal/opt"
+	"github.com/loveuer/esgo2dump/pkg/log"
 	"time"
 
 	elastic "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
 	"github.com/loveuer/esgo2dump/internal/tool"
-	"github.com/loveuer/esgo2dump/model"
-	"github.com/loveuer/nf/nft/log"
+	"github.com/loveuer/esgo2dump/pkg/model"
 	"github.com/samber/lo"
 )
 
-// ReadData
-// @param[source]: a list of include fields to extract and return from the _source field.
-// @param[sort]:   a list of <field>:<direction> pairs.
-func ReadData(ctx context.Context, client *elastic.Client, index string, size, max int, query map[string]any, source []string, sort []string) (<-chan []*model.ESSource, <-chan error) {
-	var (
-		dataCh = make(chan []*model.ESSource)
-		errCh  = make(chan error)
-	)
-
-	go func() {
-		var (
-			err      error
-			resp     *esapi.Response
-			result   = new(model.ESResponseV7)
-			scrollId string
-			total    int
-		)
-
-		defer func() {
-			close(dataCh)
-			close(errCh)
-
-			if scrollId != "" {
-				bs, _ := json.Marshal(map[string]string{
-					"scroll_id": scrollId,
-				})
-
-				var rr *esapi.Response
-
-				if rr, err = client.ClearScroll(
-					client.ClearScroll.WithContext(tool.Timeout(3)),
-					client.ClearScroll.WithBody(bytes.NewReader(bs)),
-				); err != nil {
-					log.Warn("clear scroll id=%s err=%v", scrollId, err)
-					return
-				}
-
-				if rr.StatusCode != 200 {
-					log.Warn("clear scroll id=%s status=%d msg=%s", scrollId, rr.StatusCode, rr.String())
-				}
-			}
-		}()
-
-		if client == nil {
-			errCh <- fmt.Errorf("client is nil")
-		}
-
-		qs := []func(*esapi.SearchRequest){
-			client.Search.WithContext(tool.TimeoutCtx(ctx, 20)),
-			client.Search.WithIndex(index),
-			client.Search.WithSize(size),
-			client.Search.WithFrom(0),
-			client.Search.WithScroll(time.Duration(120) * time.Second),
-		}
-
-		if len(source) > 0 {
-			qs = append(qs, client.Search.WithSourceIncludes(source...))
-		}
-
-		if len(sort) > 0 {
-			sorts := lo.Filter(sort, func(item string, index int) bool {
-				return item != ""
-			})
-
-			if len(sorts) > 0 {
-				qs = append(qs, client.Search.WithSort(sorts...))
-			}
-		}
-
-		if query != nil && len(query) > 0 {
-			queryBs, _ := json.Marshal(map[string]any{"query": query})
-			qs = append(qs, client.Search.WithBody(bytes.NewReader(queryBs)))
-		}
-
-		if resp, err = client.Search(qs...); err != nil {
-			errCh <- err
-			return
-		}
-
-		if resp.StatusCode != 200 {
-			errCh <- fmt.Errorf("resp status=%d, resp=%s", resp.StatusCode, resp.String())
-			return
-		}
-
-		decoder := json.NewDecoder(resp.Body)
-		if err = decoder.Decode(result); err != nil {
-			errCh <- err
-			return
-		}
-
-		scrollId = result.ScrollId
-
-		dataCh <- result.Hits.Hits
-		total += len(result.Hits.Hits)
-
-		if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
-			return
-		}
-
-		for {
-			if resp, err = client.Scroll(
-				client.Scroll.WithScrollID(scrollId),
-				client.Scroll.WithScroll(time.Duration(120)*time.Second),
-			); err != nil {
-				errCh <- err
-				return
-			}
-
-			result = new(model.ESResponseV7)
-
-			decoder = json.NewDecoder(resp.Body)
-			if err = decoder.Decode(result); err != nil {
-				errCh <- err
-				return
-			}
-
-			if resp.StatusCode != 200 {
-				errCh <- fmt.Errorf("resp status=%d, resp=%s", resp.StatusCode, resp.String())
-				return
-			}
-
-			dataCh <- result.Hits.Hits
-			total += len(result.Hits.Hits)
-
-			if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
-				break
-			}
-		}
-	}()
-
-	return dataCh, errCh
+type streamer struct {
+	ctx    context.Context
+	client *elastic.Client
+	index  string
+	scroll string
 }
 
-// ReadDataV2 es7 read data
-// Deprecated: bug, when can't sort by _id
-/*
-	- @param[source]: a list of include fields to extract and return from the _source field.
-    - @param[sort]:   a list of <field>:<direction> pairs.
-*/
-func ReadDataV2(
-	ctx context.Context,
-	client *elastic.Client,
-	index string,
-	size, max int,
-	query map[string]any,
-	source []string,
-	sort []string,
-) (<-chan []*model.ESSource, <-chan error) {
+// ReadData implements model.IO.
+func (s *streamer) ReadData(ctx context.Context, limit int, query map[string]any, fields []string, sort []string) ([]map[string]any, error) {
 	var (
-		dataCh = make(chan []*model.ESSource)
-		errCh  = make(chan error)
+		err    error
+		qs     []func(*esapi.SearchRequest)
+		resp   *esapi.Response
+		result = new(model.ESResponseV7[map[string]any])
 	)
 
-	log.Debug("es7.ReadDataV2: arg.index = %s, arg.size = %d, arg.max = %d", index, size, max)
+	if limit == 0 {
+		return nil, nil
+	}
 
-	go func() {
-		var (
-			err         error
-			bs          []byte
-			resp        *esapi.Response
-			searchAfter     = make([]any, 0)
-			total       int = 0
-			body            = make(map[string]any)
-			qs          []func(request *esapi.SearchRequest)
-		)
-
-		if sort == nil {
-			sort = []string{}
+	if s.scroll != "" {
+		if resp, err = s.client.Scroll(
+			s.client.Scroll.WithContext(tool.TimeoutCtx(s.ctx)),
+			s.client.Scroll.WithScrollID(s.scroll),
+			s.client.Scroll.WithScroll(35*time.Second),
+		); err != nil {
+			return nil, err
 		}
 
-		if len(query) > 0 {
-			body["query"] = query
+		goto HandleResp
+	}
+
+	qs = []func(*esapi.SearchRequest){
+		s.client.Search.WithContext(tool.TimeoutCtx(s.ctx)),
+		s.client.Search.WithIndex(s.index),
+		s.client.Search.WithSize(limit),
+		s.client.Search.WithScroll(35 * time.Second),
+	}
+
+	if len(fields) > 0 {
+		qs = append(qs, s.client.Search.WithSourceIncludes(fields...))
+	}
+
+	if len(sort) > 0 {
+		qs = append(qs, s.client.Search.WithSort(sort...))
+	}
+
+	if len(query) > 0 {
+		queryBs, err := json.Marshal(map[string]any{"query": query})
+		if err != nil {
+			return nil, err
 		}
 
-		sort = append(sort, "_id:ASC")
+		qs = append(qs, s.client.Search.WithBody(bytes.NewReader(queryBs)))
+	}
 
-		sorts := lo.Filter(sort, func(item string, index int) bool {
-			return item != ""
-		})
+	if resp, err = s.client.Search(qs...); err != nil {
+		return nil, err
+	}
 
-		defer func() {
-			close(dataCh)
-			close(errCh)
-		}()
+HandleResp:
 
-		for {
-			finaSize := tool.CalcSize(size, max, total)
-			qs = []func(*esapi.SearchRequest){
-				client.Search.WithContext(tool.TimeoutCtx(ctx, 30)),
-				client.Search.WithIndex(index),
-				client.Search.WithSize(finaSize),
-				client.Search.WithSort(sorts...),
-			}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("resp status=%d, resp=%s", resp.StatusCode, resp.String())
+	}
 
-			if len(source) > 0 {
-				qs = append(qs, client.Search.WithSourceIncludes(source...))
-			}
+	if err = json.NewDecoder(resp.Body).Decode(result); err != nil {
+		return nil, err
+	}
 
-			delete(body, "search_after")
-			if len(searchAfter) > 0 {
-				body["search_after"] = searchAfter
-			}
+	s.scroll = result.ScrollId
 
-			if bs, err = json.Marshal(body); err != nil {
-				errCh <- err
-				return
-			}
+	return lo.Slice(
+		lo.Map(
+			result.Hits.Hits,
+			func(item *model.ESSource[map[string]any], _ int) map[string]any {
+				return item.Content
+			},
+		),
+		0,
+		limit,
+	), nil
+}
 
-			log.Debug("es7.ReadDataV2: search request size = %d, body = %s", finaSize, string(bs))
+// WriteData implements model.IO.
+func (s *streamer) WriteData(ctx context.Context, items []map[string]any) (int, error) {
+	var (
+		err     error
+		indexer esutil.BulkIndexer
+		total   int
+	)
 
-			qs = append(qs, client.Search.WithBody(bytes.NewReader(bs)))
-			if resp, err = client.Search(qs...); err != nil {
-				errCh <- err
-				return
-			}
+	if len(items) == 0 {
+		return 0, nil
+	}
 
-			if resp.StatusCode != 200 {
-				errCh <- fmt.Errorf("resp status=%d, resp=%s", resp.StatusCode, resp.String())
-				return
-			}
+	count := 0
 
-			result := new(model.ESResponseV7)
-			decoder := json.NewDecoder(resp.Body)
-			if err = decoder.Decode(result); err != nil {
-				errCh <- err
-				return
-			}
+	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
+		NumWorkers:    0,
+		FlushBytes:    0,
+		FlushInterval: 0,
+		Client:        s.client,
+		Decoder:       nil,
+		OnError: func(ctx context.Context, err error) {
+			log.Error("es7.writer: on error log, err = %s", err.Error())
+		},
+		Index:               s.index,
+		ErrorTrace:          true,
+		FilterPath:          []string{},
+		Header:              map[string][]string{},
+		Human:               false,
+		Pipeline:            "",
+		Pretty:              false,
+		Refresh:             "",
+		Routing:             "",
+		Source:              []string{},
+		SourceExcludes:      []string{},
+		SourceIncludes:      []string{},
+		Timeout:             0,
+		WaitForActiveShards: "",
+	}); err != nil {
+		return 0, err
+	}
 
-			if resp.StatusCode != 200 {
-				errCh <- fmt.Errorf("resp status=%d, resp=%s", resp.StatusCode, resp.String())
-				return
-			}
+	for _, item := range items {
+		var bs []byte
 
-			dataCh <- result.Hits.Hits
-			log.Debug("es7.ReadDataV2: search response hits = %d", len(result.Hits.Hits))
-			total += len(result.Hits.Hits)
-
-			if len(result.Hits.Hits) < size || (max > 0 && total >= max) {
-				break
-			}
-
-			searchAfter = result.Hits.Hits[len(result.Hits.Hits)-1].Sort
+		if bs, err = json.Marshal(item); err != nil {
+			return 0, err
 		}
-	}()
 
-	return dataCh, errCh
+		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
+			Action: "index",
+			Index:  s.index,
+			Body:   bytes.NewReader(bs),
+			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
+				log.Error("es7.writer: on failure err log, err = %s", bulkErr.Error())
+			},
+		}); err != nil {
+			return 0, err
+		}
+
+		count++
+	}
+
+	total += count
+
+	if err = indexer.Close(ctx); err != nil {
+		return 0, err
+	}
+
+	stats := indexer.Stats()
+
+	return len(items) - int(stats.NumFailed), nil
+}
+
+func (s *streamer) ReadMapping(ctx context.Context) (map[string]any, error) {
+	r, err := s.client.Indices.GetMapping(
+		s.client.Indices.GetMapping.WithIndex(s.index),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.StatusCode != 200 {
+		return nil, fmt.Errorf("status=%d, msg=%s", r.StatusCode, r.String())
+	}
+
+	m := make(map[string]any)
+	decoder := json.NewDecoder(r.Body)
+	if err = decoder.Decode(&m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (s *streamer) WriteMapping(ctx context.Context, mapping map[string]any) error {
+	var (
+		err    error
+		bs     []byte
+		result *esapi.Response
+	)
+
+	for idxKey := range mapping {
+		if bs, err = json.Marshal(mapping[idxKey]); err != nil {
+			return err
+		}
+
+		if result, err = s.client.Indices.Create(
+			s.index,
+			s.client.Indices.Create.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
+			s.client.Indices.Create.WithBody(bytes.NewReader(bs)),
+		); err != nil {
+			return err
+		}
+
+		if result.StatusCode != 200 {
+			return fmt.Errorf("status=%d, msg=%s", result.StatusCode, result.String())
+		}
+	}
+
+	return nil
+}
+
+func (s *streamer) ReadSetting(ctx context.Context) (map[string]any, error) {
+	r, err := s.client.Indices.GetSettings(
+		s.client.Indices.GetSettings.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
+		s.client.Indices.GetSettings.WithIndex(s.index),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	if r.StatusCode != 200 {
+		return nil, fmt.Errorf("status=%d, msg=%s", r.StatusCode, r.String())
+	}
+
+	m := make(map[string]any)
+	decoder := json.NewDecoder(r.Body)
+	if err = decoder.Decode(&m); err != nil {
+		return nil, err
+	}
+
+	return m, nil
+}
+
+func (s *streamer) WriteSetting(ctx context.Context, setting map[string]any) error {
+	var (
+		err    error
+		bs     []byte
+		result *esapi.Response
+	)
+
+	if bs, err = json.Marshal(setting); err != nil {
+		return err
+	}
+
+	if result, err = s.client.Indices.PutSettings(
+		bytes.NewReader(bs),
+		s.client.Indices.PutSettings.WithContext(tool.TimeoutCtx(ctx, opt.Timeout)),
+	); err != nil {
+		return err
+	}
+
+	if result.StatusCode != 200 {
+		return fmt.Errorf("status=%d, msg=%s", result.StatusCode, result.String())
+	}
+
+	return nil
+}
+
+func NewStreamer(ctx context.Context, client *elastic.Client, index string) (model.IO[map[string]any], error) {
+	s := &streamer{ctx: ctx, client: client, index: index}
+	return s, nil
 }
