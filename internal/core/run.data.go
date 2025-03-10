@@ -4,15 +4,16 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
+	"sync"
+
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/tool"
 	"github.com/loveuer/esgo2dump/pkg/log"
 	"github.com/loveuer/esgo2dump/pkg/model"
 	"github.com/samber/lo"
 	"github.com/spf13/cobra"
-	"os"
-	"strings"
-	"sync"
 )
 
 func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
@@ -106,6 +107,7 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 		)
 
 		if err = json.Unmarshal([]byte(opt.Cfg.Args.Query), &qm); err != nil {
+			log.Debug("unmarshal arg.query string err, query = %s ,err = %s", opt.Cfg.Args.Query, err.Error())
 			return err
 		}
 
