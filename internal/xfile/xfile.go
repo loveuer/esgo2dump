@@ -19,6 +19,8 @@ type client struct {
 	scanner *bufio.Scanner
 }
 
+func (c *client) Cleanup() {}
+
 func (c *client) ReadData(ctx context.Context, limit int, query map[string]any, fields []string, sort []string) ([]map[string]any, error) {
 	if len(query) != 0 {
 		return nil, fmt.Errorf("file with query is unsupported")

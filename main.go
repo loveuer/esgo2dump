@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 	"os/signal"
 	"syscall"
 
@@ -16,7 +17,8 @@ func main() {
 
 	go func() {
 		<-ctx.Done()
-		log.Fatal(ctx.Err().Error())
+		log.Warn("Process interrupted")
+		os.Exit(1)
 	}()
 
 	if err := cmd.Run(ctx); err != nil {

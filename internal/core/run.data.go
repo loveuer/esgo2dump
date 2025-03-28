@@ -41,6 +41,7 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 		}
 
 		log.Error(err.Error())
+		os.Exit(1)
 
 	}()
 
@@ -73,10 +74,11 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 				}
 
 				if len(items) == 0 {
+					input.Cleanup()
 					break
 				}
 
-				log.Debug("one-step dump start write: arg.limit = %d, total = %d, arg.max = %d, calculate.limit = %d", opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max, limit)
+				log.Debug("one-step dump start write: arg.limit = %d, total = %d, arg.max = %d, calculate.limit = %d, got = %d", opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max, limit, len(items))
 				if wroteCount, err = output.WriteData(cmd.Context(), items); err != nil {
 					ec <- err
 					return
@@ -109,13 +111,14 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 		for scanner.Scan() {
 			queryCount++
 			qm := make(map[string]any)
-			if err = json.Unmarshal(scanner.Bytes(), &qm); err != nil {
+			bs := scanner.Bytes()
+			if err = json.Unmarshal(bs, &qm); err != nil {
 				return err
 			}
 
 			qc <- qm
 
-			log.Debug("Dump: queries[%06d]", queryCount)
+			log.Debug("Dump: queries[%06d] = %s", queryCount, string(bs))
 		}
 	case opt.Cfg.Args.Query != "":
 		var (

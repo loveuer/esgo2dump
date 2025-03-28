@@ -24,6 +24,29 @@ type streamer struct {
 	scroll string
 }
 
+func (s *streamer) Cleanup() {
+	defer func() { s.scroll = "" }()
+
+	bm := map[string]any{
+		"scroll_id": s.scroll,
+	}
+
+	bs, _ := json.Marshal(bm)
+
+	res, err := s.client.ClearScroll(
+		s.client.ClearScroll.WithContext(s.ctx),
+		s.client.ClearScroll.WithBody(bytes.NewReader(bs)),
+	)
+	if err != nil {
+		log.Warn("cleanup scroll failed, err = %s", err.Error())
+		return
+	}
+
+	if res.StatusCode != 200 {
+		log.Warn("cleanup scroll failed, message = %s", res.String())
+	}
+}
+
 // ReadData implements model.IO.
 func (s *streamer) ReadData(ctx context.Context, limit int, query map[string]any, fields []string, sort []string) ([]map[string]any, error) {
 	var (
