@@ -38,10 +38,16 @@ func (s *streamer) ReadData(ctx context.Context, limit int, query map[string]any
 	}
 
 	if s.scroll != "" {
+		bm := map[string]any{
+			"scroll":    "35s",
+			"scroll_id": s.scroll,
+		}
+
+		bs, _ := json.Marshal(bm)
+
 		if resp, err = s.client.Scroll(
 			s.client.Scroll.WithContext(tool.TimeoutCtx(s.ctx)),
-			s.client.Scroll.WithScrollID(s.scroll),
-			s.client.Scroll.WithScroll(35*time.Second),
+			s.client.Scroll.WithBody(bytes.NewReader(bs)),
 		); err != nil {
 			return nil, err
 		}
@@ -93,7 +99,11 @@ HandleResp:
 		lo.Map(
 			result.Hits.Hits,
 			func(item *model.ESSource[map[string]any], _ int) map[string]any {
-				return item.Content
+				return map[string]any{
+					"_id":     item.DocId,
+					"_index":  item.Index,
+					"_source": item.Content,
+				}
 			},
 		),
 		0,

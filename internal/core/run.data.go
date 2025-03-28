@@ -28,7 +28,21 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 		total = 0
 	)
 
-	wc.Add(1)
+	wc.Add(2)
+
+	go func() {
+		var ok bool
+
+		defer wc.Done()
+
+		err, ok = <-ec
+		if !ok {
+			return
+		}
+
+		log.Error(err.Error())
+
+	}()
 
 	go func() {
 		var (
@@ -41,11 +55,12 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 		for query := range qc {
 			for {
 				limit := tool.CalculateLimit(opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max)
-				log.Debug("one-step dump: arg.limit = %d, total = %d, arg.max = %d, calculate.limit = %d", opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max, limit)
+				log.Debug("one-step dump begin: arg.limit = %d, total = %d, arg.max = %d, calculate.limit = %d", opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max, limit)
 				if limit == 0 {
 					break
 				}
 
+				log.Debug("one-step dump start read: arg.limit = %d, total = %d, arg.max = %d, calculate.limit = %d", opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max, limit)
 				if items, err = input.ReadData(
 					cmd.Context(),
 					limit,
@@ -61,6 +76,7 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 					break
 				}
 
+				log.Debug("one-step dump start write: arg.limit = %d, total = %d, arg.max = %d, calculate.limit = %d", opt.Cfg.Args.Limit, total, opt.Cfg.Args.Max, limit)
 				if wroteCount, err = output.WriteData(cmd.Context(), items); err != nil {
 					ec <- err
 					return
@@ -118,6 +134,7 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 
 	// close query chan to stop trans_io_goroutine
 	close(qc)
+	close(ec)
 
 	wc.Wait()
 
