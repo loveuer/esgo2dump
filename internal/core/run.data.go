@@ -106,6 +106,7 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 		if qf, err = os.Open(opt.Cfg.Args.QueryFile); err != nil {
 			return err
 		}
+		defer qf.Close()
 
 		scanner := bufio.NewScanner(qf)
 		for scanner.Scan() {
@@ -119,6 +120,9 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 			qc <- qm
 
 			log.Debug("Dump: queries[%06d] = %s", queryCount, string(bs))
+		}
+		if err = scanner.Err(); err != nil {
+			return fmt.Errorf("error reading query file: %w", err)
 		}
 	case opt.Cfg.Args.Query != "":
 		var (
@@ -140,6 +144,9 @@ func RunData(cmd *cobra.Command, input, output model.IO[map[string]any]) error {
 	close(ec)
 
 	wc.Wait()
+
+	// cleanup output (e.g., close split files)
+	output.Cleanup()
 
 	log.Info("Dump: dump all data success, total = %d", total)
 

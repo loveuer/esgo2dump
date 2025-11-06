@@ -44,6 +44,29 @@ func preRun(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("unknown type=%s", opt.Cfg.Args.Type)
 	}
 
+	// validate split-limit
+	if opt.Cfg.Args.SplitLimit > 0 {
+		if opt.Cfg.Args.Type != "data" {
+			return fmt.Errorf("split-limit only supports type=data")
+		}
+		// check if output is a directory
+		info, err := os.Stat(opt.Cfg.Args.Output)
+		if err != nil {
+			if os.IsNotExist(err) {
+				// directory doesn't exist, try to create it
+				if err = os.MkdirAll(opt.Cfg.Args.Output, 0755); err != nil {
+					return fmt.Errorf("failed to create output directory: %w", err)
+				}
+			} else {
+				return fmt.Errorf("failed to check output path: %w", err)
+			}
+		} else {
+			if !info.IsDir() {
+				return fmt.Errorf("when split-limit > 0, output must be a directory, but got: %s", opt.Cfg.Args.Output)
+			}
+		}
+	}
+
 	return nil
 }
 

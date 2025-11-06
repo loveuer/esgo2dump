@@ -49,6 +49,7 @@ func initRoot(cmds ...*cobra.Command) *cobra.Command {
 	rootCommand.Flags().StringVar(&opt.Cfg.Args.QueryFile, "query_file", "", `query json file (will execute line by line)`)
 	rootCommand.Flags().IntVar(&opt.Cfg.Args.Limit, "limit", 100, "")
 	rootCommand.Flags().IntVar(&opt.Cfg.Args.Max, "max", 0, "max dump records")
+	rootCommand.Flags().IntVar(&opt.Cfg.Args.SplitLimit, "split-limit", 0, "split output file when limit > 0, output must be a directory")
 
 	rootCommand.AddCommand(cmds...)
 

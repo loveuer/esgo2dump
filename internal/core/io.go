@@ -17,6 +17,17 @@ import (
 )
 
 func NewIO(ctx context.Context, uri string, ioType model.IOType) (model.IO[map[string]any], error) {
+	// Handle split mode for output
+	if ioType == model.Output && opt.Cfg.Args.SplitLimit > 0 {
+		// Split mode: output must be a directory
+		indexName := ExtractIndexName(opt.Cfg.Args.Input)
+		if indexName == "" {
+			// If cannot extract from input, use a default name
+			indexName = "data"
+		}
+		return xfile.NewSplitClient(uri, indexName, opt.Cfg.Args.SplitLimit)
+	}
+
 	type Version struct {
 		Name    string
 		Version struct {
