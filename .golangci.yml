@@ -1,0 +1,155 @@
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: false
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+  gocyclo:
+    min-complexity: 15
+  goimports:
+    local-prefixes: github.com/loveuer/esgo2dump
+  golint:
+    min-confidence: 0
+  govet:
+    check-shadowing: true
+  lll:
+    line-length: 140
+  maligned:
+    suggest-new: true
+  misspell:
+    locale: US
+  nolintlint:
+    allow-leading-space: true # don't require machine-readable nolint directives (i.e. with no leading space)
+    allow-unused: false # report any unused nolint directives
+    require-explanation: false # don't require an explanation for nolint directives
+    require-specific: false # don't require nolint directives to be specific about which linter is being skipped
+
+linters:
+  # please, do not use `enable-all`: it's deprecated and will be removed soon.
+  # inverted configuration with `enable-all` and `disable` is not scalable during updates of golangci-lint
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - errorlint
+    - exportloopref
+    - funlen
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - goprintf
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - scopelint
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+
+issues:
+  # Excluding configuration per-path, per-linter, per-text and per-source
+  exclude-rules:
+    - path: _test.go
+      linters:
+        - errcheck
+        - goconst
+        - gocyclo
+        - gosec
+        - funlen
+        - lll
+    - path: internal/cmd/root.go
+      linters:
+        - funlen
+    - path: internal/core/run.data.go
+      linters:
+        - gocyclo
+        - funlen
+    - text: "Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked"
+      linters:
+        - errcheck
+
+  # Independently from option `exclude` we use default exclude patterns:
+  #   default-exclusions:
+  #     # Exclude some linters from exclusions.
+  #     gocyclo: false
+  #     errcheck: false
+  #     dupl: false
+  #     gosec: false
+  #
+  #   # Exclude following linters from issues:
+  #   exclude:
+  #     - lll
+  #     - gocyclo
+  #     - errcheck
+  exclude:
+    - Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked
+    - Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked
+    - G104: Errors unhandled
+    - G402: TLS InsecureSkipVerify set true
+    - G501: Import block to be in a particular order
+    - G505: Import block to be in a particular order
+    - G601: Implicit memory aliasing in for loop
+
+  # Exclude some linters from issues
+  exclude-use-default: false
+  # The default value is false. If set to true exclude and exclude-rules regular expressions become case-sensitive.
+  exclude-case-sensitive: false
+  # The maximum number of issues per one linter. Set to 0 to disable. Default is 50.
+  max-issues-per-linter: 0
+  # The maximum number of same text issues per one linter. Set to 0 to disable. Default is 3.
+  max-same-issues: 0
+  # Show only new issues created after git revision `REV`
+  new-from-rev: HEAD
+  # Show only new issues created in git patch with set file path.
+  new-from-patch: ""
+  # Fix found issues (if it's supported by the linter)
+  fix: false
+
+run:
+  # timeout for analysis, e.g. 30s, 5m. Default is 1m
+  timeout: 5m
+  # Include test files or not.
+  tests: true
+  # Skip directories
+  skip-dirs:
+    - vendor
+  # Skip files
+  skip-files:
+    - ".*\\.pb\\.go$"
+    - ".*_test\\.go$"

@@ -4,4 +4,5 @@
 *.json
 *.txt
 dist
-xtest
+xtestcoverage.out
+coverage.out
