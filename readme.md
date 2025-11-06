@@ -1,6 +1,10 @@
 # esgo2dump
 # dump elasticsearch with golang
 
+![Test](https://github.com/loveuer/esgo2dump/workflows/Test/badge.svg)
+![Go Version](https://img.shields.io/badge/Go-%3E%3D1.18-blue.svg)
+![License](https://img.shields.io/github/license/loveuer/esgo2dump)
+
 ---
 
 - 支持 elasticsearch 7, elasticsearch 6
@@ -37,6 +41,8 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --source='id;name;age;address
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query='{"match": {"name": "some_name"}}'
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_file=my_queries.json
+
+esgo2dump --input=http://127.0.0.1:9200/some_index --output=./output_dir --split-limit=1000
 ```
 
 - example_queries.json
@@ -55,6 +61,6 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 - [x] auto create index with mapping
 - [x] support es6
 - [ ] [Feature Request #1](https://github.com/loveuer/esgo2dump/issues/1): Supports more than 10,000 lines of query_file
-- [ ] args: split_size (auto split json output file)
+- [x] args: split-limit (auto split json output file)
 - [ ] auto create index with mapping,setting
 - [ ] support es8
