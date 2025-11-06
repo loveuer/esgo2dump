@@ -46,7 +46,7 @@ jobs:
         fail_ci_if_error: false
 
     - name: Build
-      run: go build -o esgo2dump ./...
+      run: go build -o esgo2dump .
 
     - name: Test build output
       run: |
