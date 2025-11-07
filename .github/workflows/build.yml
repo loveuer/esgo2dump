@@ -21,23 +21,26 @@ jobs:
       with:
         go-version: '1.18'
 
+    - name: create dist directory
+      run: mkdir -p dist
+
     - name: build linux amd64
-      run: CGO_ENABLE=0 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_linux_amd64 .
+      run: CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_linux_amd64 .
 
     - name: build linux arm64
-      run: CGO_ENABLE=0 GOOS=linux GOARCH=arm64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_linux_arm64 .
+      run: CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_linux_arm64 .
 
     - name: build windows amd64
-      run: CGO_ENABLE=0 GOOS=windows GOARCH=amd64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe .
+      run: CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe .
 
     - name: build windows arm64
-      run: CGO_ENABLE=0 GOOS=windows GOARCH=arm64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_windows_arm64.exe .
+      run: CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_windows_arm64.exe .
 
     - name: build darwin amd64
-      run: CGO_ENABLE=0 GOOS=darwin GOARCH=amd64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_darwin_amd64 .
+      run: CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_darwin_amd64 .
 
     - name: build darwin arm64
-      run: CGO_ENABLE=0 GOOS=darwin GOARCH=arm64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_darwin_arm64 .
+      run: CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags='-s -w -X github.com/loveuer/esgo2dump/internal/opt.Version="${{ github.ref_name }}"' -o dist/esgo2dump_${{ github.ref_name }}_darwin_arm64 .
 
     - name: run upx
       uses: crazy-max/ghaction-upx@v3
@@ -48,6 +51,9 @@ jobs:
           dist/esgo2dump_${{ github.ref_name }}_linux_amd64
           dist/esgo2dump_${{ github.ref_name }}_linux_arm64
           dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe
+          dist/esgo2dump_${{ github.ref_name }}_windows_arm64.exe
+          dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
+          dist/esgo2dump_${{ github.ref_name }}_darwin_arm64
 
     - name: create releases
       id: create_releases
