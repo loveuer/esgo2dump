@@ -46,9 +46,16 @@ jobs:
         fail_ci_if_error: false
 
     - name: Build
-      run: go build -o esgo2dump .
+      shell: bash
+      run: |
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          go build -o esgo2dump.exe .
+        else
+          go build -o esgo2dump .
+        fi
 
     - name: Test build output
+      shell: bash
       run: |
         if [ "${{ runner.os }}" == "Windows" ]; then
           ./esgo2dump.exe --version || echo "Version check failed (expected for vx.x.x)"
