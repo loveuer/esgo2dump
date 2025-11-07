@@ -22,14 +22,10 @@ linters-settings:
     min-complexity: 15
   goimports:
     local-prefixes: github.com/loveuer/esgo2dump
-  golint:
-    min-confidence: 0
   govet:
     check-shadowing: true
   lll:
     line-length: 140
-  maligned:
-    suggest-new: true
   misspell:
     locale: US
   nolintlint:
@@ -44,10 +40,8 @@ linters:
   disable-all: true
   enable:
     - bodyclose
-    - deadcode
     - depguard
     - dogsled
-    - dupl
     - errcheck
     - errorlint
     - exportloopref
@@ -58,28 +52,22 @@ linters:
     - gocyclo
     - gofmt
     - goimports
-    - golint
-    - goprintf
     - gosec
     - gosimple
     - govet
     - ineffassign
-    - interfacer
     - lll
     - misspell
     - nakedret
     - noctx
     - nolintlint
     - rowserrcheck
-    - scopelint
     - staticcheck
-    - structcheck
     - stylecheck
     - typecheck
     - unconvert
     - unparam
     - unused
-    - varcheck
     - whitespace
 
 issues:
