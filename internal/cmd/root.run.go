@@ -30,8 +30,9 @@ func preRun(cmd *cobra.Command, args []string) error {
 		return cmd.Help()
 	}
 
-	if opt.Cfg.Args.Limit == 0 || opt.Cfg.Args.Limit > 10000 {
-		return fmt.Errorf("invalid limit(1 - 10000)")
+	// allow unlimited upper bound for limit to support >10k query lines
+	if opt.Cfg.Args.Limit <= 0 {
+		return fmt.Errorf("invalid limit(> 0)")
 	}
 
 	if opt.Cfg.Args.Query != "" && opt.Cfg.Args.QueryFile != "" {

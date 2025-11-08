@@ -60,7 +60,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./output_dir --split
 - [x] es to es
 - [x] auto create index with mapping
 - [x] support es6
-- [ ] [Feature Request #1](https://github.com/loveuer/esgo2dump/issues/1): Supports more than 10,000 lines of query_file
+- [x] [Feature Request #1](https://github.com/loveuer/esgo2dump/issues/1): Supports more than 10,000 lines of query_file (streaming line-by-line)
 - [x] args: split-limit (auto split json output file)
 - [ ] auto create index with mapping,setting
 - [ ] support es8
