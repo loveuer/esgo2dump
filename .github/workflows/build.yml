@@ -19,7 +19,7 @@ jobs:
     - name: install golang
       uses: actions/setup-go@v5
       with:
-        go-version: '1.18'
+        go-version: '1.21'
 
     - name: create dist directory
       run: mkdir -p dist

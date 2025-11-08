@@ -1,6 +1,6 @@
 module github.com/loveuer/esgo2dump
 
-go 1.18
+go 1.21
 
 require (
 	github.com/elastic/go-elasticsearch/v6 v6.8.10

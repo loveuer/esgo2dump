@@ -2,7 +2,7 @@
 # dump elasticsearch with golang
 
 ![Test](https://github.com/loveuer/esgo2dump/workflows/Test/badge.svg)
-![Go Version](https://img.shields.io/badge/Go-%3E%3D1.18-blue.svg)
+![Go Version](https://img.shields.io/badge/Go-%3E%3D1.21-blue.svg)
 ![License](https://img.shields.io/github/license/loveuer/esgo2dump)
 
 ---
@@ -13,7 +13,7 @@
 
 ### install
 
-- with golang >= 1.18
+- with golang >= 1.21
 
   `go install github.com/loveuer/esgo2dump@latest`
 
