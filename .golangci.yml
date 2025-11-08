@@ -135,4 +135,3 @@ run:
   # Skip files
   skip-files:
     - ".*\\.pb\\.go$"
-    - ".*_test\\.go$"
