@@ -108,11 +108,6 @@ issues:
   exclude:
     - Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked
     - Error return value of .((os\\.)?std(out|err)\\..*|.*Close|.*Flush|os\\.Remove(All)?|.*printf?|os\\.(Un)?Setenv). is not checked
-    - G104: Errors unhandled
-    - G402: TLS InsecureSkipVerify set true
-    - G501: Import block to be in a particular order
-    - G505: Import block to be in a particular order
-    - G601: Implicit memory aliasing in for loop
 
   # Exclude some linters from issues
   exclude-use-default: false
