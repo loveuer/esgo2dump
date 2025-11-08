@@ -51,9 +51,6 @@ jobs:
           dist/esgo2dump_${{ github.ref_name }}_linux_amd64
           dist/esgo2dump_${{ github.ref_name }}_linux_arm64
           dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe
-          dist/esgo2dump_${{ github.ref_name }}_windows_arm64.exe
-          dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
-          dist/esgo2dump_${{ github.ref_name }}_darwin_arm64
 
     - name: create releases
       id: create_releases
@@ -66,6 +63,5 @@ jobs:
           dist/esgo2dump_${{ github.ref_name }}_linux_amd64
           dist/esgo2dump_${{ github.ref_name }}_linux_arm64
           dist/esgo2dump_${{ github.ref_name }}_windows_amd64.exe
-          dist/esgo2dump_${{ github.ref_name }}_windows_arm64.exe
           dist/esgo2dump_${{ github.ref_name }}_darwin_amd64
           dist/esgo2dump_${{ github.ref_name }}_darwin_arm64
