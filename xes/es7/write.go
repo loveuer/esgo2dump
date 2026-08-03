@@ -12,6 +12,86 @@ import (
 	"github.com/loveuer/esgo2dump/pkg/model"
 )
 
+// WriteData implements model.IO.
+//
+// Items from the read path are dump-style {"_id":..., "_index":..., "_source":...}
+// wrappers; here they are unwrapped so the real _id is preserved and the
+// _source is indexed without the wrapper keys.
+func (s *streamer) WriteData(ctx context.Context, items []map[string]any) (int, error) {
+	var (
+		err     error
+		indexer esutil.BulkIndexer
+		total   int
+	)
+
+	if len(items) == 0 {
+		return 0, nil
+	}
+
+	count := 0
+
+	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
+		NumWorkers:    0,
+		FlushBytes:    0,
+		FlushInterval: 0,
+		Client:        s.client,
+		Decoder:       nil,
+		OnError: func(ctx context.Context, err error) {
+			log.Error("es7.writer: on error log, err = %s", err.Error())
+		},
+		Index:               s.index,
+		ErrorTrace:          true,
+		FilterPath:          []string{},
+		Header:              map[string][]string{},
+		Human:               false,
+		Pipeline:            "",
+		Pretty:              false,
+		Refresh:             "",
+		Routing:             "",
+		Source:              []string{},
+		SourceExcludes:      []string{},
+		SourceIncludes:      []string{},
+		Timeout:             0,
+		WaitForActiveShards: "",
+	}); err != nil {
+		return 0, err
+	}
+
+	for _, item := range items {
+		id, _, src, _ := model.UnwrapItem(item)
+
+		var bs []byte
+
+		if bs, err = json.Marshal(src); err != nil {
+			return 0, err
+		}
+
+		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
+			Action:     "index",
+			Index:      s.index,
+			DocumentID: id,
+			Body:       bytes.NewReader(bs),
+			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
+				log.Error("es7.writer: on failure err log, err = %s", bulkErr.Error())
+			},
+		}); err != nil {
+			return 0, err
+		}
+
+		count++
+	}
+
+	total += count
+
+	if err = indexer.Close(ctx); err != nil {
+		return 0, err
+	}
+
+	stats := indexer.Stats()
+
+	return len(items) - int(stats.NumFailed), nil
+}
+
 func WriteData[T any](ctx context.Context, client *elastic.Client, index string, docs ...*model.ESSource[T]) error {
 	var (
 		err     error

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	elastic6 "github.com/elastic/go-elasticsearch/v6"
 	elastic7 "github.com/elastic/go-elasticsearch/v7"
 	"github.com/go-resty/resty/v2"
 	"github.com/loveuer/esgo2dump/internal/opt"
@@ -11,6 +12,8 @@ import (
 	"github.com/loveuer/esgo2dump/internal/xfile"
 	"github.com/loveuer/esgo2dump/pkg/log"
 	"github.com/loveuer/esgo2dump/pkg/model"
+	"github.com/loveuer/esgo2dump/xes/es5"
+	"github.com/loveuer/esgo2dump/xes/es6"
 	"github.com/loveuer/esgo2dump/xes/es7"
 	"net/url"
 	"strings"
@@ -63,7 +66,7 @@ func NewIO(ctx context.Context, uri string, ioType model.IOType) (model.IO[map[s
 	versionURL := fmt.Sprintf("%s://%s", target.Scheme, strings.Split(target.Host, ",")[0])
 	log.Debug("%s version url = %s", ioType, versionURL)
 	if rr, err = opt.HttpClient.R().Get(versionURL); err != nil {
-		log.Debug("get uri es version failed, type = %s, uri = %s, version_url = %s, err = %s", ioType, uri, versionURL, err.Error())
+		return nil, fmt.Errorf("get uri es version failed, type = %s, uri = %s, version_url = %s, err = %w", ioType, uri, versionURL, err)
 	}
 
 	if err = json.Unmarshal(rr.Body(), &v); err != nil {
@@ -75,7 +78,20 @@ func NewIO(ctx context.Context, uri string, ioType model.IOType) (model.IO[map[s
 
 	mainVersion := strings.Split(v.Version.Number, ".")[0]
 	switch mainVersion {
-	case "8":
+	case "5":
+		var client *es5.Client
+		if client, err = es5.NewClient(ctx, uri); err != nil {
+			return nil, err
+		}
+
+		return es5.NewStreamer(ctx, client, index)
+	case "6":
+		var client *elastic6.Client
+		if client, err = es6.NewClient(ctx, uri); err != nil {
+			return nil, err
+		}
+
+		return es6.NewStreamer(ctx, client, index)
 	case "7":
 		var client *elastic7.Client
 		if client, err = es7.NewClient(ctx, uri); err != nil {
@@ -83,10 +99,7 @@ func NewIO(ctx context.Context, uri string, ioType model.IOType) (model.IO[map[s
 		}
 
 		return es7.NewStreamer(ctx, client, index)
-	case "6":
 	default:
 		return nil, fmt.Errorf("es version not supported yet: %s", mainVersion)
 	}
-
-	return nil, nil
 }

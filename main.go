@@ -15,14 +15,21 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	defer cancel()
 
+	done := make(chan struct{})
 	go func() {
-		<-ctx.Done()
-		log.Warn("Process interrupted")
-		os.Exit(1)
+		select {
+		case <-ctx.Done():
+			log.Warn("Process interrupted")
+			os.Exit(1)
+		case <-done:
+		}
 	}()
 
 	if err := cmd.Run(ctx); err != nil {
 		log.Error(err.Error())
-		return
 	}
+
+	// stop the interruption watcher before deferred cancel() fires,
+	// otherwise every normal exit would log "Process interrupted"
+	close(done)
 }

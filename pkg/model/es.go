@@ -3,6 +3,7 @@ package model
 type ESSource[T any] struct {
 	DocId   string `json:"_id"`
 	Index   string `json:"_index"`
+	Type    string `json:"_type"`
 	Content T      `json:"_source"`
 	Sort    []any  `json:"sort"`
 }

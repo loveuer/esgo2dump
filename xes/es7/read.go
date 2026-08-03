@@ -5,14 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/elastic/go-elasticsearch/v7/esutil"
-	"github.com/loveuer/esgo2dump/internal/opt"
-	"github.com/loveuer/esgo2dump/pkg/log"
 	"time"
 
 	elastic "github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
+	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/tool"
+	"github.com/loveuer/esgo2dump/pkg/log"
 	"github.com/loveuer/esgo2dump/pkg/model"
 	"github.com/samber/lo"
 )
@@ -134,79 +133,6 @@ HandleResp:
 	), nil
 }
 
-// WriteData implements model.IO.
-func (s *streamer) WriteData(ctx context.Context, items []map[string]any) (int, error) {
-	var (
-		err     error
-		indexer esutil.BulkIndexer
-		total   int
-	)
-
-	if len(items) == 0 {
-		return 0, nil
-	}
-
-	count := 0
-
-	if indexer, err = esutil.NewBulkIndexer(esutil.BulkIndexerConfig{
-		NumWorkers:    0,
-		FlushBytes:    0,
-		FlushInterval: 0,
-		Client:        s.client,
-		Decoder:       nil,
-		OnError: func(ctx context.Context, err error) {
-			log.Error("es7.writer: on error log, err = %s", err.Error())
-		},
-		Index:               s.index,
-		ErrorTrace:          true,
-		FilterPath:          []string{},
-		Header:              map[string][]string{},
-		Human:               false,
-		Pipeline:            "",
-		Pretty:              false,
-		Refresh:             "",
-		Routing:             "",
-		Source:              []string{},
-		SourceExcludes:      []string{},
-		SourceIncludes:      []string{},
-		Timeout:             0,
-		WaitForActiveShards: "",
-	}); err != nil {
-		return 0, err
-	}
-
-	for _, item := range items {
-		var bs []byte
-
-		if bs, err = json.Marshal(item); err != nil {
-			return 0, err
-		}
-
-		if err = indexer.Add(context.Background(), esutil.BulkIndexerItem{
-			Action: "index",
-			Index:  s.index,
-			Body:   bytes.NewReader(bs),
-			OnFailure: func(ctx context.Context, item esutil.BulkIndexerItem, item2 esutil.BulkIndexerResponseItem, bulkErr error) {
-				log.Error("es7.writer: on failure err log, err = %s", bulkErr.Error())
-			},
-		}); err != nil {
-			return 0, err
-		}
-
-		count++
-	}
-
-	total += count
-
-	if err = indexer.Close(ctx); err != nil {
-		return 0, err
-	}
-
-	stats := indexer.Stats()
-
-	return len(items) - int(stats.NumFailed), nil
-}
-
 func (s *streamer) ReadMapping(ctx context.Context) (map[string]any, error) {
 	r, err := s.client.Indices.GetMapping(
 		s.client.Indices.GetMapping.WithIndex(s.index),
@@ -285,7 +211,13 @@ func (s *streamer) WriteSetting(ctx context.Context, setting map[string]any) err
 		result *esapi.Response
 	)
 
-	if bs, err = json.Marshal(setting); err != nil {
+	payload := model.FilterUpdatableSettings(setting)
+
+	if len(payload) == 0 {
+		return nil
+	}
+
+	if bs, err = json.Marshal(map[string]any{"index": payload}); err != nil {
 		return err
 	}
 
