@@ -7,7 +7,7 @@
 
 ---
 
-- 支持 elasticsearch 5.x, 6, 7
+- 支持 elasticsearch 5.x, 6, 7, 8
 
 ---
 
@@ -63,4 +63,4 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./output_dir --split
 - [x] [Feature Request #1](https://github.com/loveuer/esgo2dump/issues/1): Supports more than 10,000 lines of query_file (streaming line-by-line)
 - [x] args: split-limit (auto split json output file)
 - [ ] auto create index with mapping,setting
-- [ ] support es8
+- [x] support es8

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	elastic6 "github.com/elastic/go-elasticsearch/v6"
 	elastic7 "github.com/elastic/go-elasticsearch/v7"
+	elastic8 "github.com/elastic/go-elasticsearch/v8"
 	"github.com/go-resty/resty/v2"
 	"github.com/loveuer/esgo2dump/internal/opt"
 	"github.com/loveuer/esgo2dump/internal/tool"
@@ -15,6 +16,7 @@ import (
 	"github.com/loveuer/esgo2dump/xes/es5"
 	"github.com/loveuer/esgo2dump/xes/es6"
 	"github.com/loveuer/esgo2dump/xes/es7"
+	"github.com/loveuer/esgo2dump/xes/es8"
 	"net/url"
 	"strings"
 )
@@ -78,6 +80,13 @@ func NewIO(ctx context.Context, uri string, ioType model.IOType) (model.IO[map[s
 
 	mainVersion := strings.Split(v.Version.Number, ".")[0]
 	switch mainVersion {
+	case "8":
+		var client *elastic8.Client
+		if client, err = es8.NewClient(ctx, uri); err != nil {
+			return nil, err
+		}
+
+		return es8.NewStreamer(ctx, client, index)
 	case "5":
 		var client *es5.Client
 		if client, err = es5.NewClient(ctx, uri); err != nil {

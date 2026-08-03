@@ -11,6 +11,29 @@ import (
 
 const integrationURI = "http://127.0.0.1:9200"
 
+func requireMajor(t *testing.T, client *elastic.Client, major string) {
+	t.Helper()
+
+	res, err := client.Info(client.Info.WithContext(tool.Timeout(5)))
+	if err != nil {
+		t.Skipf("Skipping test - ES server not available: %v", err)
+	}
+	defer res.Body.Close()
+
+	var info struct {
+		Version struct {
+			Number string `json:"number"`
+		} `json:"version"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&info); err != nil {
+		t.Fatalf("decode server info: %v", err)
+	}
+
+	if strings.Split(info.Version.Number, ".")[0] != major {
+		t.Skipf("Skipping test - server es %s, want major %s", info.Version.Number, major)
+	}
+}
+
 func deleteIndex(t *testing.T, client *elastic.Client, index string) {
 	t.Helper()
 
@@ -35,6 +58,7 @@ func TestStreamer_Integration(t *testing.T) {
 	if err != nil {
 		t.Skipf("Skipping test - ES server not available: %v", err)
 	}
+	requireMajor(t, c, "6")
 
 	srcIndex := "esgo2dump_it6_src"
 	dstIndex := "esgo2dump_it6_dst"
@@ -86,18 +110,6 @@ func TestStreamer_Integration(t *testing.T) {
 		t.Fatalf("batch 1 len = %d, want 2", len(first))
 	}
 
-	item := first[0]
-	if item["_id"] != "1" {
-		t.Errorf("batch1 item0 _id = %v, want 1", item["_id"])
-	}
-	if item["_type"] != "doc" {
-		t.Errorf("batch1 item0 _type = %v, want doc", item["_type"])
-	}
-	src, ok := item["_source"].(map[string]any)
-	if !ok || src["name"] != "alice" {
-		t.Errorf("batch1 item0 _source = %v", item["_source"])
-	}
-
 	second, err := streamer.ReadData(ctx, 2, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("ReadData batch 2: %v", err)
@@ -115,12 +127,31 @@ func TestStreamer_Integration(t *testing.T) {
 	}
 	streamer.Cleanup()
 
+	// scroll returns arbitrary subsets; the two batches together must cover all 3 docs
+	all := append(first, second...)
+	ids := map[string]bool{}
+	alice := false
+	for _, it := range all {
+		ids[it["_id"].(string)] = true
+		if it["_type"] != "doc" {
+			t.Errorf("item _type = %v, want doc", it["_type"])
+		}
+		if src, ok := it["_source"].(map[string]any); ok && src["name"] == "alice" {
+			alice = true
+		}
+	}
+	if len(ids) != 3 || !ids["1"] || !ids["2"] || !ids["3"] {
+		t.Errorf("scroll ids = %v, want 1/2/3", ids)
+	}
+	if !alice {
+		t.Errorf("scroll results missing alice: %v", all)
+	}
+
 	// write into a second index using the scroll-read items
 	dst, err := NewStreamer(ctx, c, dstIndex)
 	if err != nil {
 		t.Fatalf("NewStreamer dst: %v", err)
 	}
-	all := append(first, second...)
 	if n, err := dst.WriteData(ctx, all); err != nil || n != 3 {
 		t.Fatalf("dst WriteData got n=%d err=%v", n, err)
 	}
