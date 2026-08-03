@@ -16,7 +16,7 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=http://192.168.1.1:9
 
 esgo2dump --input=https://username:password@127.0.0.1:9200/some_index --output=./data.json
 
-esgo2dump --input=http://127.0.0.1:9200/some_index --source='id;name;age;address' --output=./data.json
+esgo2dump --input=http://127.0.0.1:9200/some_index --field='id,name,age,address' --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query='{"match": {"name": "some_name"}}'
 

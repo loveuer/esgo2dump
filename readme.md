@@ -30,13 +30,9 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=http://192.168.1.1:9200/some_index --limit=5000
 
-esgo2dump --input=http://127.0.0.1:9200/some_index --i-version 6 --output=./data.json
-
-esgo2dump --output=http://127.0.0.1:9200/some_index --o-version 6 --input=./data.json
-
 esgo2dump --input=https://username:password@127.0.0.1:9200/some_index --output=./data.json
 
-esgo2dump --input=http://127.0.0.1:9200/some_index --source='id;name;age;address;phones' --output=./data.json
+esgo2dump --input=http://127.0.0.1:9200/some_index --field='id,name,age,address,phones' --output=./data.json
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query='{"match": {"name": "some_name"}}'
 
@@ -44,6 +40,9 @@ esgo2dump --input=http://127.0.0.1:9200/some_index --output=./data.json --query_
 
 esgo2dump --input=http://127.0.0.1:9200/some_index --output=./output_dir --split-limit=1000
 ```
+
+> ES 版本（5.x / 6 / 7）自动探测，无需手动指定：input 和 output 两端分别探测目标 ES 的版本。
+> 文件输入/输出（如 `./data.json`）按 NDJSON 逐行处理。
 
 - example_queries.json
 ```json
